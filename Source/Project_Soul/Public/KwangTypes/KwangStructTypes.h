@@ -5,7 +5,7 @@
 #include "GameplayTagContainer.h"
 #include "KwangStructTypes.generated.h"
 
-class UKwangGameplayAbility;
+class UKwangHeroGameplayAbility;
 class UInputMappingContext;
 
 USTRUCT(BlueprintType)
@@ -20,7 +20,7 @@ struct FKwangHeroAbilitySet
 
 	// [부여할 스킬] 실제로 캐릭터에게 가르칠 스킬 클래스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	TSubclassOf<UKwangGameplayAbility> AbilityToGrant;
+	TSubclassOf<UKwangHeroGameplayAbility> AbilityToGrant;
 
 	bool IsValid() const;
 };

@@ -2,7 +2,7 @@
 
 
 #include "KwangTypes/KwangStructTypes.h"
-#include "AbilitySystem/Abilities/KwangGameplayAbility.h"
+#include "AbilitySystem/Abilities/KwangHeroGameplayAbility.h"
 
 bool FKwangHeroAbilitySet::IsValid() const
 {

@@ -26,9 +26,9 @@ void UPawnCombatComponent::RegisterSpawnedWeapon(FGameplayTag InWeaponTagToRegis
 	}
 
 	// 5. [디버그 로그] 무기가 성공적으로 등록되었다고 화면 왼쪽 위(또는 로그창)에 파란색/초록색 글씨로 띄워줌
-	const FString WeaponString = FString::Printf(TEXT("A weapon named : %s has been registered using the tag %s"), 
+	/*const FString WeaponString = FString::Printf(TEXT("A weapon named : %s has been registered using the tag %s"), 
 		*InWeaponToRegister->GetName(), *InWeaponTagToRegister.ToString());
-	Debug::Print(WeaponString);
+	Debug::Print(WeaponString);*/
 }
 
 AKwangWeaponBase* UPawnCombatComponent::GetCharacterCarriedWeaponByTag(FGameplayTag InWeaponTagToGet) const
