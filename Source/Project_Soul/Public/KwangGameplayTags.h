@@ -18,4 +18,7 @@ namespace KwangGameplayTags
 	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Ability_Attack_Heavy_Sword);
 
 	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Weapon_Sword);
+
+	/** Enemy Tags **/
+	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Enemy_Weapon);
 }

@@ -16,6 +16,21 @@ void UDataAsset_StartUpDataBase::GiveToAbilitySystemComponent(UKwangAbilitySyste
 	// 3. [반응형 스킬 주입] 조건부로 발동되는 스킬(피격, 사망 등) 배열을 실무 함수로 넘김.
 	GrantAbilities(ReactiveAbilities, InASCToGive, ApplyLevel);
 
+	if (!StartUpGameplayEffects.IsEmpty())
+	{
+		for (const TSubclassOf<UGameplayEffect>& EffectClass : StartUpGameplayEffects)
+		{
+			if (!EffectClass) continue;
+
+			UGameplayEffect* EffectCDO = EffectClass->GetDefaultObject<UGameplayEffect>();
+			InASCToGive->ApplyGameplayEffectToSelf(
+				EffectCDO,
+				ApplyLevel,
+				InASCToGive->MakeEffectContext()
+			);
+		}
+	}
+
 }
 
 void UDataAsset_StartUpDataBase::GrantAbilities(const TArray<TSubclassOf<UKwangGameplayAbility>>& InAbilitiesToGive, 

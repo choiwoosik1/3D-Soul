@@ -3,7 +3,7 @@
 
 #include "Components/Combat/PawnCombatComponent.h"
 #include "Items/Weapons/KwangWeaponBase.h"
-
+#include "Components/BoxComponent.h"
 #include "KwangDebugHelper.h"
 
 void UPawnCombatComponent::RegisterSpawnedWeapon(FGameplayTag InWeaponTagToRegister, AKwangWeaponBase* InWeaponToRegister, bool bRegisterAsEquippedWeapon)
@@ -58,4 +58,25 @@ AKwangWeaponBase* UPawnCombatComponent::GetCharacterCurrentEquippedWeapon() cons
 
 	// 2. [검색 함수 재활용] 방금 위에서 만든 '태그로 무기 찾는 함수'에다가 현재 태그를 툭 던져서 나온 결과물을 바로 넘겨줌
 	return GetCharacterCarriedWeaponByTag(CurrentEquippedWeaponTag);
+}
+
+void UPawnCombatComponent::ToggleWeaponCollision(bool bShouldEnable, EToggleDamageType ToggleDamageType)
+{
+	if (ToggleDamageType == EToggleDamageType::CurrentEquippedWeapon)
+	{
+		AKwangWeaponBase* WeaponToToggle = GetCharacterCurrentEquippedWeapon();
+
+		check(WeaponToToggle);
+
+		if (bShouldEnable)
+		{
+			WeaponToToggle->GetWeaponCollisionBox()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+			Debug::Print(WeaponToToggle->GetName() + TEXT("Collision Enabled"), FColor::Green);
+		}
+		else
+		{
+			WeaponToToggle->GetWeaponCollisionBox()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Debug::Print(WeaponToToggle->GetName() + TEXT("Collision Disabled"), FColor::Red);
+		}
+	}
 }

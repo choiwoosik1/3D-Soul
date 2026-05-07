@@ -29,9 +29,31 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapons")
 	UBoxComponent* WeaponCollisionBox;
 
+	bool bIsHitChecking = false; // 몽타주 노티파이용 스위치
+
+	void ExecuteHitTrace();
+
+	UPROPERTY()
+	TArray<AActor*> AlreadyHitActors; // 중복 타격 방지
+
+	// 아까 Rename한 소켓 이름들
+	FName BladeStartSocketName = TEXT("BladeStart");
+	FName BladeEndSocketName = TEXT("BladeEnd");
+
+	UFUNCTION()
+	virtual void OnCollisionBoxBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent*OtherComp, 
+		int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	virtual void OnCollisionBoxEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 public:
 	// [인라인 Getter 함수]
 	// 외부(캐릭터나 GAS)에서 이 무기의 타격 박스(WeaponCollisionBox) 정보를 달라고 할 때 꺼내주는 함수
 	// FORCEINLINE을 붙여서 함수 호출 속도를 빠르게 만듦
 	FORCEINLINE UBoxComponent* GetWeaponCollisionBox() const { return WeaponCollisionBox; }
+
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	void ToggleWeaponCollision(bool bEnable);
+
+	virtual void Tick(float DeltaTime) override;
 };

@@ -73,6 +73,11 @@ AKwangHeroCharacters::AKwangHeroCharacters()
 	HeroCombatComponent = CreateDefaultSubobject<UHeroCombatComponent>(TEXT("HeroCombatComponent"));
 }
 
+UPawnCombatComponent* AKwangHeroCharacters::GetPawnCombatComponent() const
+{
+	return HeroCombatComponent;
+}
+
 void AKwangHeroCharacters::PossessedBy(AController* NewController)
 {
 	// 1. 부모 클래스의 기본 빙의 로직을 먼저 실행해서 뼈대 세팅

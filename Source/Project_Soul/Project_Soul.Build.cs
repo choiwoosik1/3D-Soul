@@ -16,7 +16,8 @@ public class Project_Soul : ModuleRules
 			"EnhancedInput",
             "GameplayTags",
 			"EnhancedInput",
-			"GameplayTasks"});
+			"GameplayTasks",
+			"Kismet"});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

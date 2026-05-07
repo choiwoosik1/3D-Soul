@@ -8,6 +8,7 @@
 
 class UKwangGameplayAbility;
 class UKwangAbilitySystemComponent;
+class UGameplayEffect;
 
 /**
  * 
@@ -31,6 +32,9 @@ protected:
 	// 평소엔 가만히 있다가, '맞았을 때(Hit React)', '죽었을 때(Dead React)' 등 특정 조건에서만 발동되는 어빌리티 목록
 	UPROPERTY(EditDefaultsOnly, Category = "StartUpData")
 	TArray< TSubclassOf < UKwangGameplayAbility > > ReactiveAbilities;
+
+	UPROPERTY(EditDefaultsOnly, Category = "StartUpData")
+	TArray<TSubclassOf<UGameplayEffect>> StartUpGameplayEffects;
 
 	// [내부 작업용 도우미 함수]
 	// 위에서 만든 배열들을 하나씩 빙글빙글 돌면서(for문), 진짜로 캐릭터의 뇌(ASC)에 스킬을 하나하나 부여해 주는(Grant) 실제 노동을 담당할 함수

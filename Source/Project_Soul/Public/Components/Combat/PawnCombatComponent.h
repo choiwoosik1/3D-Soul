@@ -8,6 +8,14 @@
 #include "PawnCombatComponent.generated.h"
 
 class AKwangWeaponBase;
+
+UENUM(BlueprintType)
+enum class EToggleDamageType : uint8
+{
+	CurrentEquippedWeapon,
+	LeftHand,
+	RightHand
+};
 /**
  * 
  */
@@ -35,6 +43,9 @@ public:
 	// 4. [현재 무기 가져오기] 현재 들고 있는 무기 태그(CurrentEquippedWeaponTag)를 이용해, 실제 무기 액터 포인터를 바로 뽑아오는 간편 함수.
 	UFUNCTION(BlueprintCallable, Category = "Kwang|Combat")
 	AKwangWeaponBase* GetCharacterCurrentEquippedWeapon() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Kwang|Combat")
+	void ToggleWeaponCollision(bool bShouldEnable, EToggleDamageType ToggleDamageType = EToggleDamageType::CurrentEquippedWeapon);
 
 private:
 	// 5. [비밀 인벤토리 주머니] 외부에서 함부로 못 건드리게 private으로 숨겨둔 '진짜 무기 보관함'.

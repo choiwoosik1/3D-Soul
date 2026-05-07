@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
+#include "Interfaces/PawnCombatInterface.h"
 #include "KwangBaseCharacters.generated.h"
 
 class UKwangAbilitySystemComponent;
@@ -12,7 +13,7 @@ class UKwangAttributeSet;
 class UDataAsset_StartUpDataBase;
 
 UCLASS()
-class PROJECT_SOUL_API AKwangBaseCharacters : public ACharacter, public IAbilitySystemInterface
+class PROJECT_SOUL_API AKwangBaseCharacters : public ACharacter, public IAbilitySystemInterface, public IPawnCombatInterface
 {
 	GENERATED_BODY()
 
@@ -22,6 +23,10 @@ public:
 	//~ Begin IAbilitySystemInterface Interface.
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const;
 	//~ End IAbilitySystemInterface Interface
+
+	//~ Begin IPawnCombatInterfaceInterface.
+	virtual UPawnCombatComponent* GetPawnCombatComponent() const override;
+	//~ End IPawnCombatInterfaceInterface.
 
 protected:
 	//~ Begin APawn Interface.

@@ -28,6 +28,11 @@ UAbilitySystemComponent* AKwangBaseCharacters::GetAbilitySystemComponent() const
 	return GetKwangAbilitySystemComponent();
 }
 
+UPawnCombatComponent* AKwangBaseCharacters::GetPawnCombatComponent() const
+{
+	return nullptr;
+}
+
 void AKwangBaseCharacters::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);

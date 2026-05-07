@@ -23,6 +23,10 @@ class PROJECT_SOUL_API AKwangHeroCharacters : public AKwangBaseCharacters
 public:
 	AKwangHeroCharacters();
 
+	//~ Begin IPawnCombatInterfaceInterface.
+	virtual UPawnCombatComponent* GetPawnCombatComponent() const override;
+	//~ End IPawnCombatInterfaceInterface.
+
 protected:
 	// [언리얼 특수 주석] 이 안쪽은 'APawn'이라는 조상 클래스가 물려준 기능들을 모아둔 곳이라고 표시
 	// 나중에 언리얼 공식 문서처럼 예쁜 API 설명서를 자동 생성할 때 쓰이는 기능
