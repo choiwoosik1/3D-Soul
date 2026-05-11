@@ -19,6 +19,9 @@ void UPawnCombatComponent::RegisterSpawnedWeapon(FGameplayTag InWeaponTagToRegis
 	// 3. [인벤토리 추가] Map에 태그(Key)와 무기 포인터(Value)를 짝지어서 쏙 집어넣음
 	CharacterCarriedWeaponMap.Emplace(InWeaponTagToRegister, InWeaponToRegister);
 
+	InWeaponToRegister->OnWeaponHitTarget.BindUObject(this, &ThisClass::OnHitTargetActor);
+	InWeaponToRegister->OnWeaponPulledFromTarget.BindUObject(this, &ThisClass::OnWeaponPulledFromTargetActor);
+
 	// 4. [즉시 장착 처리] 등록과 동시에 장착할 거냐고 물어봤다면(true), 현재 활성화된 무기 태그를 이걸로 덮어씌움
 	if (bRegisterAsEquippedWeapon)
 	{
@@ -68,6 +71,8 @@ void UPawnCombatComponent::ToggleWeaponCollision(bool bShouldEnable, EToggleDama
 
 		check(WeaponToToggle);
 
+		WeaponToToggle->ToggleWeaponCollision(bShouldEnable);
+
 		if (bShouldEnable)
 		{
 			WeaponToToggle->GetWeaponCollisionBox()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
@@ -77,6 +82,16 @@ void UPawnCombatComponent::ToggleWeaponCollision(bool bShouldEnable, EToggleDama
 		{
 			WeaponToToggle->GetWeaponCollisionBox()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			Debug::Print(WeaponToToggle->GetName() + TEXT("Collision Disabled"), FColor::Red);
+
+			OverlappedActors.Empty();
 		}
 	}
+}
+
+void UPawnCombatComponent::OnHitTargetActor(AActor* HitActor)
+{
+}
+
+void UPawnCombatComponent::OnWeaponPulledFromTargetActor(AActor* InteractedActor)
+{
 }

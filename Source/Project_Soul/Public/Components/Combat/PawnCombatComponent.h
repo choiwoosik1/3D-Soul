@@ -47,6 +47,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Kwang|Combat")
 	void ToggleWeaponCollision(bool bShouldEnable, EToggleDamageType ToggleDamageType = EToggleDamageType::CurrentEquippedWeapon);
 
+	virtual void OnHitTargetActor(AActor* HitActor);
+
+	virtual void OnWeaponPulledFromTargetActor(AActor* InteractedActor);
+
+protected:
+	TArray<AActor*> OverlappedActors;
+
 private:
 	// 5. [비밀 인벤토리 주머니] 외부에서 함부로 못 건드리게 private으로 숨겨둔 '진짜 무기 보관함'.
 	// 태그(Key)를 넣으면 무기 포인터(Value)가 나오는 TMap(딕셔너리) 구조

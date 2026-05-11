@@ -73,17 +73,17 @@ void AKwangWeaponBase::ToggleWeaponCollision(bool bEnable)
 {
 	bIsHitChecking = bEnable;
 
-	if (bEnable)
-	{
-		AlreadyHitActors.Empty(); // 공격 시작 시 히트 리스트 초기화
-	}
+	//if (bEnable)
+	//{
+	//	AlreadyHitActors.Empty(); // 공격 시작 시 히트 리스트 초기화
+	//}
 }
 
 void AKwangWeaponBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (bIsHitChecking)  // 주석 다시 살리기
+	if (bIsHitChecking) 
 	{
 		ExecuteHitTrace();
 	}
@@ -91,6 +91,8 @@ void AKwangWeaponBase::Tick(float DeltaTime)
 
 void AKwangWeaponBase::ExecuteHitTrace()
 {
+	// 1. 캐릭터 메시에서 직접 소켓 위치를 가져옴
+	// 무기 에셋이 따로 없으니, 캐릭터가 쥐고 있는 칼의 시작과 끝 소켓 위치를 실시간으로 가져옴
 	APawn* OwnerPawn = GetInstigator<APawn>();
 	if (!OwnerPawn) return;
 
@@ -107,6 +109,8 @@ void AKwangWeaponBase::ExecuteHitTrace()
 	ActorsToIgnore.Add(this);
 	ActorsToIgnore.Add(GetOwner());
 
+
+	// 2. 레이저(SphereTrace) 쏘기
 	bool bHit = UKismetSystemLibrary::SphereTraceMulti(
 		GetWorld(), Start, End, 30.0f,
 		UEngineTypes::ConvertToTraceType(ECC_Pawn),
@@ -123,14 +127,13 @@ void AKwangWeaponBase::ExecuteHitTrace()
 		for (const FHitResult& Hit : OutHits)
 		{
 			AActor* HitActor = Hit.GetActor();
-			if (HitActor && !AlreadyHitActors.Contains(HitActor))
+			if (HitActor)
 			{
 				if (APawn* HitPawn = Cast<APawn>(HitActor))
 				{
 					if (GetInstigator() != HitPawn)
 					{
-						AlreadyHitActors.Add(HitActor);
-						Debug::Print(GetName() + TEXT(" HIT: ") + HitPawn->GetName(), FColor::Green);
+						OnWeaponHitTarget.ExecuteIfBound(HitActor);
 					}
 				}
 			}

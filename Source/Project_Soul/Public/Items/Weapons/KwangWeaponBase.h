@@ -8,6 +8,8 @@
 
 class UBoxComponent;
 
+DECLARE_DELEGATE_OneParam(FOnTargetInteractedDelegate, AActor*)
+
 UCLASS()
 class PROJECT_SOUL_API AKwangWeaponBase : public AActor
 {
@@ -16,6 +18,9 @@ class PROJECT_SOUL_API AKwangWeaponBase : public AActor
 public:	
 	// Sets default values for this actor's properties
 	AKwangWeaponBase();
+
+	FOnTargetInteractedDelegate OnWeaponHitTarget;
+	FOnTargetInteractedDelegate OnWeaponPulledFromTarget;
 
 protected:
 
