@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h" // GAS의 기본 어빌리티 클래스
+#include "KwangTypes/KwangEnumTypes.h"
 #include "KwangGameplayAbility.generated.h"
 
 // [열거형(Enum)] 스킬의 '발동 방식'을 정의하는 메뉴판
@@ -56,4 +57,17 @@ protected:
 	// 엔진 기본 ASC가 아닌, 우리가 직접 만든 'Kwang ASC'를 편하게 꺼내 쓰는 함수
 	UFUNCTION(BlueprintPure, Category = "Kwang|Ablity")
 	UKwangAbilitySystemComponent* GetKwangAbilitySystemComponentFromActorInfo() const;
+
+	// [UFUNCTION 매크로] 블루프린트에서 호출 가능한 함수로 등록
+	// ExpandEnumAsExecs: OutSuccessType 열거형을 블루프린트에서 '성공/실패 분기 핀'으로 자동 변환
+	// (블루프린트에서 if문 없이 Succeeded/Failed 핀으로 바로 분기 가능)
+	FActiveGameplayEffectHandle NativeApplyEffectSpecHandleToTarget(AActor* TargetActor, const FGameplayEffectSpecHandle& InSpecHandle);
+
+	// [네이티브 이펙트 적용 함수] C++ 전용 실제 처리 함수
+	// BP_ApplyEffectSpecHandleToTarget의 실제 로직을 담당하는 내부 함수
+	// TargetActor: 이펙트를 받을 대상 액터 (적 캐릭터 등)
+	// InSpecHandle: 적용할 이펙트 설계도 (데미지, 스태미나 감소 등)
+	UFUNCTION(BlueprintCallable, Category = "Kwang|Ablity", meta = (DisplayName = "Apply Gameplay Effect Spec Handle To Target Actor", ExpandEnumAsExecs = "OutSuccessType"))
+	FActiveGameplayEffectHandle BP_ApplyEffectSpecHandleToTarget(AActor* TargetActor, const FGameplayEffectSpecHandle& InSpecHandle,
+		EKwangSuccessType& OutSuccessType);
 };

@@ -4,6 +4,7 @@
 #include "AbilitySystem/Abilities/KwangGameplayAbility.h"
 #include "AbilitySystem/KwangAbilitySystemComponent.h" // 뇌(ASC)에 직접 명령을 내리기 위해 포함
 #include "Components/Combat/PawnCombatComponent.h"
+#include "AbilitySystemBlueprintLibrary.h"
 
 // 1. [스킬 획득 시점]
 void UKwangGameplayAbility::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
@@ -55,4 +56,58 @@ UKwangAbilitySystemComponent* UKwangGameplayAbility::GetKwangAbilitySystemCompon
 	// 1. [기본 뇌 가져오기] CurrentActorInfo(현재 스킬이 실행 중인 환경/캐릭터 정보) 안에 이미 저장되어 있는 기본 ASC 포인터를 빼옴.
 	// 2. [형변환(Cast)] 그 기본 ASC를 우리가 직접 만든 'Kwang ASC' 규격으로 안전하게 강제 변환(Cast)해서 돌려줌
 	return Cast<UKwangAbilitySystemComponent>(CurrentActorInfo->AbilitySystemComponent);
+}
+
+FActiveGameplayEffectHandle UKwangGameplayAbility::NativeApplyEffectSpecHandleToTarget(AActor* TargetActor, const FGameplayEffectSpecHandle& InSpecHandle)
+{
+
+	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
+
+	if (!TargetASC)
+	{
+		UE_LOG(LogTemp, Error, TEXT("TargetASC is NULL! TargetActor: %s"), TargetActor ? *TargetActor->GetName() : TEXT("NULL"));
+		return FActiveGameplayEffectHandle();
+	}
+	if (!InSpecHandle.IsValid() || !InSpecHandle.Data.IsValid())
+	{
+		UE_LOG(LogTemp, Error, TEXT("InSpecHandle is Invalid!"));
+		return FActiveGameplayEffectHandle();
+	}
+
+	UKwangAbilitySystemComponent* MyASC = GetKwangAbilitySystemComponentFromActorInfo();
+	if (!MyASC)
+	{
+		UE_LOG(LogTemp, Error, TEXT("MyASC is NULL!"));
+		return FActiveGameplayEffectHandle();
+	}
+
+	return MyASC->ApplyGameplayEffectSpecToTarget(*InSpecHandle.Data, TargetASC);
+	//// 1. [ASC 가져오기] 대상 액터의 AbilitySystemComponent를 꺼냄
+	//UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
+
+	//// 2. [유효성 검사] 대상 ASC와 이펙트 설계도가 둘 다 유효한지 확인. 하나라도 없으면 즉시 크래시
+	//check(TargetASC && InSpecHandle.IsValid());
+
+	//// 3. [이펙트 적용] 내 ASC에서 대상 ASC로 이펙트를 쏴서 실제로 적용시킴
+	////    ApplyGameplayEffectSpecToTarget: GAS의 핵심 함수, 데미지/버프/디버프 등 모든 이펙트 적용에 사용
+	//return GetKwangAbilitySystemComponentFromActorInfo()->ApplyGameplayEffectSpecToTarget(
+	//	*InSpecHandle.Data, // 이펙트 설계도 역참조
+	//	TargetASC           // 이펙트를 받을 대상의 ASC
+	//);
+}
+
+// [블루프린트용 래퍼 함수] NativeApplyEffectSpecHandleToTarget을 블루프린트에서 쓸 수 있도록 포장한 함수
+// OutSuccessType: 이펙트 적용 성공/실패 여부를 블루프린트 분기 핀으로 출력
+FActiveGameplayEffectHandle UKwangGameplayAbility::BP_ApplyEffectSpecHandleToTarget(AActor* TargetActor, const FGameplayEffectSpecHandle& InSpecHandle, EKwangSuccessType& OutSuccessType)
+{
+	// 1. [실제 처리 위임] C++ 전용 함수에 실제 이펙트 적용을 맡기고 결과 핸들을 받음
+	FActiveGameplayEffectHandle ActiveGameplayEffectHandle = NativeApplyEffectSpecHandleToTarget(TargetActor, InSpecHandle);
+
+	// 2. [성공 여부 판정] 이펙트가 정상적으로 적용됐는지 확인하여 OutSuccessType에 결과 저장
+	//    WasSuccessfullyApplied(): 이펙트 적용 성공이면 true, 면역/실패면 false
+	//    삼항 연산자로 Successful/Failed 중 하나를 OutSuccessType에 담아 블루프린트로 내보냄
+	OutSuccessType = ActiveGameplayEffectHandle.WasSuccessfullyApplied() ? EKwangSuccessType::Successful : EKwangSuccessType::Failed;
+
+	// 3. [핸들 반환] 적용된 이펙트 핸들 반환 (나중에 이펙트 제거할 때 이 핸들을 사용)
+	return ActiveGameplayEffectHandle;
 }

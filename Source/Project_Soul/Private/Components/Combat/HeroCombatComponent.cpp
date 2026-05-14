@@ -12,8 +12,20 @@ AKwangHeroWeapon* UHeroCombatComponent::GetHeroCarriedWeaponByTag(FGameplayTag I
 	return Cast<AKwangHeroWeapon>(GetCharacterCarriedWeaponByTag(InWeaponTag));
 }
 
+AKwangHeroWeapon* UHeroCombatComponent::GetHeroCurrentEquippedWeapon() const
+{
+	return Cast<AKwangHeroWeapon>(GetCharacterCurrentEquippedWeapon());
+}
+
+float UHeroCombatComponent::GetHeroCurrentEquippedWeaponDamageAtLevel(float InLevel) const
+{
+	return GetHeroCurrentEquippedWeapon()->HeroWeaponData.WeaponBaseDamage.GetValueAtLevel(InLevel);
+}
+
 void UHeroCombatComponent::OnHitTargetActor(AActor* HitActor)
 {
+	UE_LOG(LogTemp, Warning, TEXT("OnHitTargetActor HitActor: %s"), HitActor ? *HitActor->GetName() : TEXT("NULL"));
+
 	if (OverlappedActors.Contains(HitActor))
 	{
 		return;

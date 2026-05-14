@@ -31,6 +31,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Kwang|Ablity")
 	UHeroCombatComponent* GetHeroCombatComponentFromActorInfo();
 
+	UFUNCTION(BlueprintPure, Category = "Kwang|Ablity")
+	FGameplayEffectSpecHandle MakeHeroDamageEffectSpecHandle(TSubclassOf<UGameplayEffect> EffectClass, 
+		float InWeaponBaseDamage, FGameplayTag InCurrentAttackTypeTag, int32 InUsedComboCount);
+
 private:
 	// [캐싱용 변수 - 약한 포인터(Weak Pointer)]
 	// 매번 Cast 연산을 하면 느리니까, 처음 한 번 찾았을 때 여기다 저장(캐싱)해두고 다음부터는 이걸 바로 꺼내 쓰기 위한 변수

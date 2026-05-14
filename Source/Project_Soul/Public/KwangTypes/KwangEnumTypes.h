@@ -12,3 +12,10 @@ enum class EKwangValidTypes : uint8
 	Valid,
 	InValid
 };
+
+UENUM()
+enum class EKwangSuccessType : uint8
+{
+	Successful,
+	Failed
+};

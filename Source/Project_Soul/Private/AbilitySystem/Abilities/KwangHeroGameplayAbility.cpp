@@ -3,24 +3,26 @@
 
 #include "AbilitySystem/Abilities/KwangHeroGameplayAbility.h"
 #include "Characters/KwangHeroCharacters.h"
+#include "AbilitySystem/KwangAbilitySystemComponent.h"
 #include "KwangHeroController.h"
+#include "KwangGameplayTags.h"
 
 AKwangHeroCharacters* UKwangHeroGameplayAbility::GetHeroCharacterFromActorInfo()
 {
-    // 1. [Ä³½Ã È®ÀÎ] ÀÌÀü¿¡ Ã£¾ÆµĞ ¿µ¿õ Ä³¸¯ÅÍ ÁÖ¼Ò(¾àÇÑ Æ÷ÀÎÅÍ)°¡ ¾ÆÁ÷ À¯È¿ÇÑÁö(»ì¾ÆÀÖ´ÂÁö) È®ÀÎ
+    // 1. [ìºì‹œ í™•ì¸] ì´ì „ì— ì°¾ì•„ë‘” ì˜ì›… ìºë¦­í„° ì£¼ì†Œ(ì•½í•œ í¬ì¸í„°)ê°€ ì•„ì§ ìœ íš¨í•œì§€(ì‚´ì•„ìˆëŠ”ì§€) í™•ì¸
     if (!CachedKwangHeroCharacter.IsValid())
     {
-        // 2. [ÃÖÃÊ Å½»ö & ÀúÀå] ºñ¾îÀÖ°Å³ª °´Ã¼°¡ ÆÄ±«µÇ¾ú´Ù¸é, ÇöÀç ½ºÅ³ ½ÃÀüÀÚÀÇ À°Ã¼(AvatarActor)¸¦ ¿µ¿õ Å¬·¡½º·Î º¯È¯(Cast)ÇØ¼­ Ä³½Ã º¯¼ö¿¡ ÀúÀå
+        // 2. [ìµœì´ˆ íƒìƒ‰ & ì €ì¥] ë¹„ì–´ìˆê±°ë‚˜ ê°ì²´ê°€ íŒŒê´´ë˜ì—ˆë‹¤ë©´, í˜„ì¬ ìŠ¤í‚¬ ì‹œì „ìì˜ ìœ¡ì²´(AvatarActor)ë¥¼ ì˜ì›… í´ë˜ìŠ¤ë¡œ ë³€í™˜(Cast)í•´ì„œ ìºì‹œ ë³€ìˆ˜ì— ì €ì¥
         CachedKwangHeroCharacter = Cast<AKwangHeroCharacters>(CurrentActorInfo->AvatarActor);
     }
 
-    // 3. [¾ÈÀü ¹İÈ¯] Ä³½ÌµÈ Æ÷ÀÎÅÍ°¡ À¯È¿ÇÏ¸é ÁøÂ¥ Æ÷ÀÎÅÍ(.Get())¸¦ ²¨³»ÁÖ°í, ¾Æ´Ï¸é ºó¼Õ(nullptr)À» ¹İÈ¯ÇÏ´Â »ïÇ× ¿¬»êÀÚ.
+    // 3. [ì•ˆì „ ë°˜í™˜] ìºì‹±ëœ í¬ì¸í„°ê°€ ìœ íš¨í•˜ë©´ ì§„ì§œ í¬ì¸í„°(.Get())ë¥¼ êº¼ë‚´ì£¼ê³ , ì•„ë‹ˆë©´ ë¹ˆì†(nullptr)ì„ ë°˜í™˜í•˜ëŠ” ì‚¼í•­ ì—°ì‚°ì.
     return CachedKwangHeroCharacter.IsValid() ? CachedKwangHeroCharacter.Get() : nullptr;
 }
 
 AKwangHeroController* UKwangHeroGameplayAbility::GetHeroControllerFromActorInfo()
 {
-    // À§¿Í ¿Ïº®È÷ µ¿ÀÏÇÑ ¿ø¸®. ÇÃ·¹ÀÌ¾î ÄÁÆ®·Ñ·¯¸¦ Ã£¾Æ¼­ Ä³½ÌÇÔ.
+    // ìœ„ì™€ ì™„ë²½íˆ ë™ì¼í•œ ì›ë¦¬. í”Œë ˆì´ì–´ ì»¨íŠ¸ë¡¤ëŸ¬ë¥¼ ì°¾ì•„ì„œ ìºì‹±í•¨.
     if (!CachedKwangHeroController.IsValid())
     {
         CachedKwangHeroController = Cast<AKwangHeroController>(CurrentActorInfo->PlayerController);
@@ -30,7 +32,49 @@ AKwangHeroController* UKwangHeroGameplayAbility::GetHeroControllerFromActorInfo(
 
 UHeroCombatComponent* UKwangHeroGameplayAbility::GetHeroCombatComponentFromActorInfo()
 {
-    // 1. [Áö¸§±æ ¿¬°è] ¹æ±İ À§¿¡¼­ ¸¸µç '¿µ¿õ Ä³¸¯ÅÍ °¡Á®¿À±â' ÇÔ¼ö¸¦ ¸ÕÀú ½ÇÇàÇÔ (¿©±â¼­ ¾Ë¾Æ¼­ Ä³½Ì Ã³¸®±îÁö µÊ).
-    // 2. [ÄÄÆ÷³ÍÆ® ¹İÈ¯] ±× Ä³¸¯ÅÍ º»Ã¼ ¾È¿¡ ÀÌ¹Ì ¸¸µé¾îÁ® ÀÖ´Â '¿µ¿õ ÀüÅõ ÄÄÆ÷³ÍÆ® ²¨³»±â' ÇÔ¼ö¸¦ ¿¬´Ş¾Æ È£ÃâÇØ¼­ ¹Ù·Î ³Ñ°ÜÁÜ
+    // 1. [ì§€ë¦„ê¸¸ ì—°ê³„] ë°©ê¸ˆ ìœ„ì—ì„œ ë§Œë“  'ì˜ì›… ìºë¦­í„° ê°€ì ¸ì˜¤ê¸°' í•¨ìˆ˜ë¥¼ ë¨¼ì € ì‹¤í–‰í•¨ (ì—¬ê¸°ì„œ ì•Œì•„ì„œ ìºì‹± ì²˜ë¦¬ê¹Œì§€ ë¨).
+    // 2. [ì»´í¬ë„ŒíŠ¸ ë°˜í™˜] ê·¸ ìºë¦­í„° ë³¸ì²´ ì•ˆì— ì´ë¯¸ ë§Œë“¤ì–´ì ¸ ìˆëŠ” 'ì˜ì›… ì „íˆ¬ ì»´í¬ë„ŒíŠ¸ êº¼ë‚´ê¸°' í•¨ìˆ˜ë¥¼ ì—°ë‹¬ì•„ í˜¸ì¶œí•´ì„œ ë°”ë¡œ ë„˜ê²¨ì¤Œ
     return GetHeroCharacterFromActorInfo()->GetHeroCombatComponent();
+}
+
+FGameplayEffectSpecHandle UKwangHeroGameplayAbility::MakeHeroDamageEffectSpecHandle(
+    TSubclassOf<UGameplayEffect> EffectClass,   // ì ìš©í•  ê²Œì„í”Œë ˆì´ ì´í™íŠ¸ í´ë˜ìŠ¤
+    float InWeaponBaseDamage,                   // ë¬´ê¸° ê¸°ë³¸ ë°ë¯¸ì§€ ìˆ˜ì¹˜
+    FGameplayTag InCurrentAttackTypeTag,         // í˜„ì¬ ê³µê²© íƒ€ì… íƒœê·¸ (ex. LightAttack, HeavyAttack)
+    int32 InUsedComboCount)                  // í˜„ì¬ ì½¤ë³´ ì¹´ìš´íŠ¸
+{
+    // 1. [ìœ íš¨ì„± ê²€ì‚¬] ì´í™íŠ¸ í´ë˜ìŠ¤ê°€ ë¹„ì–´ìˆìœ¼ë©´ ì¦‰ì‹œ í¬ë˜ì‹œ (í•„ìˆ˜ ê°’ì´ë¯€ë¡œ)
+    check(EffectClass);
+
+    // 2. [ì»¨í…ìŠ¤íŠ¸ ìƒì„±] ì´ ì´í™íŠ¸ê°€ 'ëˆ„ê°€, ì–´ë””ì„œ, ë¬´ì—‡ìœ¼ë¡œ' ë°œìƒí–ˆëŠ”ì§€ ì •ë³´ë¥¼ ë‹´ëŠ” ì»¨í…ìŠ¤íŠ¸ í•¸ë“¤ ìƒì„±
+    FGameplayEffectContextHandle ContextHandle = GetKwangAbilitySystemComponentFromActorInfo()->MakeEffectContext();
+
+    // 3. [ì¶œì²˜ ì •ë³´ ë“±ë¡] ì´ ì´í™íŠ¸ë¥¼ ë°œë™ì‹œí‚¨ ì–´ë¹Œë¦¬í‹°, ì†ŒìŠ¤ ì˜¤ë¸Œì íŠ¸, ì‹œì „ì ì •ë³´ë¥¼ ì»¨í…ìŠ¤íŠ¸ì— ë“±ë¡
+    ContextHandle.SetAbility(this);                                                              // ì–´ë¹Œë¦¬í‹° ë³¸ì²´
+    ContextHandle.AddSourceObject(GetAvatarActorFromActorInfo());                               // ì†ŒìŠ¤ ì˜¤ë¸Œì íŠ¸ (ë¬´ê¸° ë“±)
+    ContextHandle.AddInstigator(GetAvatarActorFromActorInfo(), GetAvatarActorFromActorInfo());   // ì‹œì „ì & ìœ ë°œì
+
+    // 4. [ìŠ¤í™ í•¸ë“¤ ìƒì„±] ìœ„ì—ì„œ ë§Œë“  ì»¨í…ìŠ¤íŠ¸ë¥¼ ë°”íƒ•ìœ¼ë¡œ ì‹¤ì œ ì´í™íŠ¸ ìŠ¤í™(ë°ë¯¸ì§€ ê³„ì‚°ìš© ì„¤ê³„ë„)ì„ ìƒì„±
+    FGameplayEffectSpecHandle EffectSpecHandle = GetKwangAbilitySystemComponentFromActorInfo()->MakeOutgoingSpec(
+        EffectClass,        // ì–´ë–¤ ì´í™íŠ¸ì¸ì§€
+        GetAbilityLevel(),  // ì–´ë¹Œë¦¬í‹° ë ˆë²¨ (ë°ë¯¸ì§€ ìŠ¤ì¼€ì¼ë§ì— í™œìš© ê°€ëŠ¥)
+        ContextHandle       // ìœ„ì—ì„œ ë§Œë“  ì»¨í…ìŠ¤íŠ¸
+    );
+
+    // 5. [ê¸°ë³¸ ë°ë¯¸ì§€ ì„¤ì •] SetByCaller ë°©ì‹ìœ¼ë¡œ ê¸°ë³¸ ë°ë¯¸ì§€ ìˆ˜ì¹˜ë¥¼ ì´í™íŠ¸ ìŠ¤í™ì— ì£¼ì…
+    //    (SetByCaller: ì´í™íŠ¸ ë‚´ë¶€ì—ì„œ íƒœê·¸ë¡œ ê°’ì„ ë°›ì•„ ì“°ëŠ” ë°©ì‹, ëŸ°íƒ€ì„ì— ìœ ì—°í•˜ê²Œ ìˆ˜ì¹˜ ë³€ê²½ ê°€ëŠ¥)
+    EffectSpecHandle.Data->SetSetByCallerMagnitude(
+        KwangGameplayTags::Shared_SetByCaller_BaseDamage,
+        InWeaponBaseDamage
+    );
+
+    // 6. [ê³µê²© íƒ€ì…ë³„ ì½¤ë³´ ìˆ˜ì¹˜ ì„¤ì •] ê³µê²© íƒ€ì… íƒœê·¸ê°€ ìœ íš¨í•  ë•Œë§Œ ì½¤ë³´ ì¹´ìš´íŠ¸ë¥¼ ì¶”ê°€ë¡œ ì£¼ì…
+    //    (ex. ë¼ì´íŠ¸ ì–´íƒ 3ì½¤ë³´ â†’ ë°ë¯¸ì§€ ë³´ë„ˆìŠ¤ ê³„ì‚°ì— í™œìš©)
+    if (InCurrentAttackTypeTag.IsValid())
+    {
+        EffectSpecHandle.Data->SetSetByCallerMagnitude(InCurrentAttackTypeTag, InUsedComboCount);
+    }
+
+    // 7. [ë°˜í™˜] ì™„ì„±ëœ ì´í™íŠ¸ ìŠ¤í™ í•¸ë“¤ ë°˜í™˜ â†’ ì´ê±¸ ApplyGameplayEffectSpecToTarget ë“±ì— ë„˜ê²¨ì„œ ì‹¤ì œ ë°ë¯¸ì§€ ì ìš©
+    return EffectSpecHandle;
 }
