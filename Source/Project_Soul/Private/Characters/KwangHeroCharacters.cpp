@@ -13,6 +13,8 @@
 #include "AbilitySystem/KwangAbilitySystemComponent.h" // GAS의 '뇌' 역할을 하는 컴포넌트
 #include "DataAssets/StartUpData/DataAsset_HeroStartUpData.h"
 #include "Components/Combat/HeroCombatComponent.h"
+#include "Components/UI/HeroUIComponent.h"
+
 #include "KwangDebugHelper.h"
 
 // Sets default values
@@ -71,11 +73,23 @@ AKwangHeroCharacters::AKwangHeroCharacters()
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
 
 	HeroCombatComponent = CreateDefaultSubobject<UHeroCombatComponent>(TEXT("HeroCombatComponent"));
+
+	HeroUIComponent = CreateDefaultSubobject<UHeroUIComponent>(TEXT("HeroUIComponent"));
 }
 
 UPawnCombatComponent* AKwangHeroCharacters::GetPawnCombatComponent() const
 {
 	return HeroCombatComponent;
+}
+
+UPawnUIComponent* AKwangHeroCharacters::GetPawnUIComponent() const
+{
+	return HeroUIComponent;
+}
+
+UHeroUIComponent* AKwangHeroCharacters::GetHeroUIComponent() const
+{
+	return HeroUIComponent;
 }
 
 void AKwangHeroCharacters::PossessedBy(AController* NewController)

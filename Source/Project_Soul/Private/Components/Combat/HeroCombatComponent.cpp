@@ -24,8 +24,6 @@ float UHeroCombatComponent::GetHeroCurrentEquippedWeaponDamageAtLevel(float InLe
 
 void UHeroCombatComponent::OnHitTargetActor(AActor* HitActor)
 {
-	UE_LOG(LogTemp, Warning, TEXT("OnHitTargetActor HitActor: %s"), HitActor ? *HitActor->GetName() : TEXT("NULL"));
-
 	if (OverlappedActors.Contains(HitActor))
 	{
 		return;
@@ -42,8 +40,19 @@ void UHeroCombatComponent::OnHitTargetActor(AActor* HitActor)
 		KwangGameplayTags::Shared_Event_MeleeHit,
 		Data
 	);
+
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+		GetOwningPawn(),
+		KwangGameplayTags::Player_Event_HitPause,
+		FGameplayEventData()
+	);
 }
 
 void UHeroCombatComponent::OnWeaponPulledFromTargetActor(AActor* InteractedActor)
 {
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+		GetOwningPawn(),
+		KwangGameplayTags::Player_Event_HitPause,
+		FGameplayEventData()
+	);
 }

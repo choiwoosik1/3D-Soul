@@ -33,6 +33,11 @@ UPawnCombatComponent* AKwangBaseCharacters::GetPawnCombatComponent() const
 	return nullptr;
 }
 
+UPawnUIComponent* AKwangBaseCharacters::GetPawnUIComponent() const
+{
+	return nullptr;
+}
+
 void AKwangBaseCharacters::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);

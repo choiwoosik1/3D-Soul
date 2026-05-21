@@ -131,7 +131,7 @@ void UGEExecCalc_DamageTaken::Execute_Implementation(const FGameplayEffectCustom
         const float DamageIncreasePercentLight = (UsedLightAttackComboCount - 1) * 0.05 + 1.f;
 
         BaseDamage *= DamageIncreasePercentLight;
-        Debug::Print(TEXT("ScaledBaseDamageLight"), BaseDamage);
+        //Debug::Print(TEXT("ScaledBaseDamageLight"), BaseDamage);
     }
 
     // [헤비 어택 콤보 데미지 보정]
@@ -142,14 +142,13 @@ void UGEExecCalc_DamageTaken::Execute_Implementation(const FGameplayEffectCustom
         const float DamageIncreasePercentHeavy = UsedHeavyAttackComboCount * 0.15f + 1.f;
 
         BaseDamage *= DamageIncreasePercentHeavy;
-        Debug::Print(TEXT("ScaledBaseDamageHeavy"), BaseDamage);
+        //Debug::Print(TEXT("ScaledBaseDamageHeavy"), BaseDamage);
     }
 
     // [최종 데미지 계산]
     // 공식: (기본데미지 * 공격력) / 방어력
     // 방어력이 높을수록 데미지가 줄어드는 나눗셈 구조
     const float FinalDamageDone = BaseDamage * SourceAttackPower / TargetDefensePower;
-    Debug::Print(TEXT("FinalDamageDone"), FinalDamageDone);
 
     if (FinalDamageDone > 0.f)
     {

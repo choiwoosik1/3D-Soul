@@ -30,7 +30,7 @@ void UKwangFunctionLibrary::RemoveGameplayTagFromActorIfFound(AActor* InActor, F
 
     if (!ASC->HasMatchingGameplayTag(TagToRemove))
     {
-        ASC->AddLooseGameplayTag(TagToRemove);
+        ASC->RemoveLooseGameplayTag(TagToRemove);
     }
 }
 

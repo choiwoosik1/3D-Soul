@@ -6,6 +6,9 @@
 #include "Components/Combat/EnemyCombatComponent.h"
 #include "Engine/AssetManager.h"
 #include "DataAssets/StartUpData/DataAsset_EnemyStartUpData.h"
+#include "Components/UI/EnemyUIComponent.h"
+#include "Components/WidgetComponent.h"
+#include "Widgets/KwangWidgetBase.h"
 
 #include "KwangDebugHelper.h"
 AEnemyCharacters::AEnemyCharacters()
@@ -41,11 +44,36 @@ AEnemyCharacters::AEnemyCharacters()
 	GetCharacterMovement()->BrakingDecelerationWalking = 1000.f;
 
 	EnemyCombatComponent = CreateDefaultSubobject<UEnemyCombatComponent>("EnemyCombatComponent");
+
+	EnemyUIComponent = CreateDefaultSubobject<UEnemyUIComponent>("EnemyUIComponent");
+
+	EnemyHealthWidgetComponent = CreateDefaultSubobject<UWidgetComponent>("EnemyHealthWidgetComponent");
+	EnemyHealthWidgetComponent->SetupAttachment(GetMesh());
 }
 
 UPawnCombatComponent* AEnemyCharacters::GetPawnCombatComponent() const
 {
 	return EnemyCombatComponent;
+}
+
+UPawnUIComponent* AEnemyCharacters::GetPawnUIComponent() const
+{
+	return EnemyUIComponent;
+}
+
+UEnemyUIComponent* AEnemyCharacters::GetEnemyUIComponent() const
+{
+	return EnemyUIComponent;
+}
+
+void AEnemyCharacters::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (UKwangWidgetBase* HealthWidget = Cast<UKwangWidgetBase>(EnemyHealthWidgetComponent->GetUserWidgetObject()))
+	{
+		HealthWidget->InitEnemyCreatedWidget(this);
+	}
 }
 
 void AEnemyCharacters::PossessedBy(AController* NewController)
