@@ -9,15 +9,17 @@ public class Project_Soul : ModuleRules
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
 		PublicDependencyModuleNames.AddRange(new string[] { 
+			"AIModule",
 			"Core",
 			"CoreUObject",
 			"Engine",
 			"InputCore",
 			"EnhancedInput",
             "GameplayTags",
-			"EnhancedInput",
 			"GameplayTasks",
-			"Kismet"});
+			"Kismet",
+			"NavigationSystem",
+		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
