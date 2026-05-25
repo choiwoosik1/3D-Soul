@@ -22,15 +22,14 @@ public:
     UPROPERTY(BlueprintReadOnly, Category = "Combat")
     FGameplayAttributeData DamageTaken;
     ATTRIBUTE_ACCESSORS(UEnemyAttributeSet, DamageTaken)
-
-        UPROPERTY(BlueprintReadOnly, Category = "Combat")
+        
+    UPROPERTY(BlueprintReadOnly, Category = "Combat")
     FGameplayAttributeData AttackPower;
     ATTRIBUTE_ACCESSORS(UEnemyAttributeSet, AttackPower)
-
-        UPROPERTY(BlueprintReadOnly, Category = "Combat")
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Combat")
     FGameplayAttributeData DefensePower;
     ATTRIBUTE_ACCESSORS(UEnemyAttributeSet, DefensePower)
 
-        virtual void PostGameplayEffectExecute(
-            const FGameplayEffectModCallbackData& Data) override;
+    virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
 };

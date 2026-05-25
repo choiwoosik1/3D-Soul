@@ -1,4 +1,5 @@
 #include "Enemy/Projectile.h"
+#include "Enemy/Enemy.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -60,6 +61,15 @@ void AProjectile::Tick(float DeltaTime)
     if (FVector::DotProduct(CurrentDirection, ToTarget.GetSafeNormal()) < 0.2f)
     {
         ProjectileMovement->bIsHomingProjectile = false;
+
+        AEnemy* Enemy = Cast<AEnemy>(GetInstigator());
+        if (Enemy)
+        {
+            FVector ToPlayer = (Player->GetActorLocation() - GetActorLocation());
+            FVector ToPlayerDir = Enemy->GetPlayerActionRecord().GetAttackTransform().TransformVector(ToPlayer);
+
+            Enemy->GetPlayerActionRecord().RecordDodge(ToPlayerDir);
+        }
         return;
     }
 

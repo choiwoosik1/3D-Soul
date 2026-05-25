@@ -56,12 +56,16 @@ void ANormalEnemy_Stage1_Baekje::DecideNextAction()
 // Enable the weapon hitbox for collision detection during attack animations
 void ANormalEnemy_Stage1_Baekje::EnableWeaponHitbox()
 {
+	Super::EnableWeaponHitbox();
+
 	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 }
 
 // Disable the weapon hitbox to prevent unintended collisions outside of attack animations
 void ANormalEnemy_Stage1_Baekje::DisableWeaponHitbox()
 {
+	Super::DisableWeaponHitbox();
+
 	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	AlreadyHitActors.Empty();
 	AttackIdx++;
