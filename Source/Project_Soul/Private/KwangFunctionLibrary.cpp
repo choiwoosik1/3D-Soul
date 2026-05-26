@@ -6,6 +6,8 @@
 #include "AbilitySystem/KwangAbilitySystemComponent.h"
 #include "Interfaces/PawnCombatInterface.h"
 
+#include "KwangDebugHelper.h"
+
 
 UKwangAbilitySystemComponent* UKwangFunctionLibrary::NativeGetKwangASCFromActor(AActor* InActor)
 {
@@ -66,4 +68,23 @@ UPawnCombatComponent* UKwangFunctionLibrary::BP_GetPawnCombatComponentFromActor(
     OutValidType = CombatComponent ? EKwangValidTypes::Valid : EKwangValidTypes::InValid;
 
     return CombatComponent;
+}
+
+float UKwangFunctionLibrary::GetScalableFloatValueAtLevel(const FScalableFloat& InScalableFloat, float InLevel)
+{
+    return InScalableFloat.GetValueAtLevel(InLevel);
+}
+
+bool UKwangFunctionLibrary::IsValidBlock(AActor* InAttacker, AActor* InDefender)
+{
+    check(InAttacker && InDefender);
+
+    const float DotResult = FVector::DotProduct(InAttacker->GetActorForwardVector(), InDefender->GetActorForwardVector());
+
+    const FString DebugString = FString::Printf(TEXT("Dot Result : %f %s"), DotResult, 
+        DotResult < -0.1f ? TEXT("Valid Block") : TEXT("InValid Block"));
+
+    Debug::Print(DebugString, DotResult > -0.1f ? FColor::Green : FColor::Red);
+
+    return DotResult < -0.1f ? true : false;
 }

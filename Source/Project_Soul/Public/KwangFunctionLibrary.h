@@ -9,6 +9,7 @@
 
 class UKwangAbilitySystemComponent;
 class UPawnCombatComponent;
+struct FScalableFloat;
 /**
  * 
  */
@@ -34,4 +35,13 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Kwang|FunctionLibrary", meta = (DisplayName = "Get Pawn Combat Component From Actor", ExpandEnumAsExecs = "OutValidType"))
 	static UPawnCombatComponent* BP_GetPawnCombatComponentFromActor(AActor* InActor, EKwangValidTypes& OutValidType);
+
+	UFUNCTION(BlueprintPure, Category = "Kwang|FunctionLibrary", meta = (CompactNodeTitle = "Get Value At Level"))
+	static float GetScalableFloatValueAtLevel(const FScalableFloat& InScalableFloat, float InLevel = 1.f);
+
+	//UFUNCTION(BlueprintCallable, Category = "Kwang|FunctionLibrary")
+	//static FGameplayTag ComputeHitReactDirectionTag(AActor* InAttacker, AActor* InVictim, float& OutAngleDifference);
+
+	UFUNCTION(BlueprintCallable, Category = "Kwang|FunctionLibrary")
+	static bool IsValidBlock(AActor* InAttacker, AActor* InDefender);	
 };
