@@ -52,14 +52,60 @@ struct FAttackPattern
     float AttackRange = 200.f;
 };
 
+USTRUCT(BlueprintType)
+struct FDodgeRecord
+{
+    GENERATED_BODY();
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    FVector AttackDir = FVector::ZeroVector;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    FVector LastDodgeDirection = FVector::ZeroVector;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    FVector AccumulatedOffset = FVector::ZeroVector;
+};
+
 // Player action record for AI decision making
 USTRUCT(BlueprintType)
 struct FPlayerActionRecord
 {
     GENERATED_BODY()
 
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    FDodgeRecord DodgeRecord;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     float TimeSinceLastAttack;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     bool bIsBlocking;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     bool bIsRolling;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     float DistanceToEnemy;
+
+    void SetAttackDirection(FVector Dir)
+    {
+        DodgeRecord.AttackDir = Dir;
+    }
+
+    FMatrix GetAttackTransform()
+    {
+        return FRotationMatrix(DodgeRecord.AttackDir.Rotation()).Inverse();
+    }
+
+    void RecordDodge(FVector DodgeDir)
+    {
+        DodgeRecord.LastDodgeDirection = DodgeDir;
+        DodgeRecord.AccumulatedOffset = FMath::Lerp(DodgeRecord.AccumulatedOffset, DodgeDir, 0.5f);
+    }
+
+    FVector GetCorrectedOffset()
+    {
+        return DodgeRecord.AccumulatedOffset;
+    }
 };

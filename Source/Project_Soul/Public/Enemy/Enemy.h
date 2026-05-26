@@ -3,12 +3,16 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
+#include "Interfaces/PawnUIInterface.h"
+#include "Components/WidgetComponent.h"
 #include "Enemy/EnemyTypes.h"
 #include "Enemy.generated.h"
 
 // Enemy character class
 UCLASS()
-class PROJECT_SOUL_API AEnemy : public ACharacter, public IAbilitySystemInterface
+class PROJECT_SOUL_API AEnemy : public ACharacter,
+	public IAbilitySystemInterface,
+	public IPawnUIInterface
 {
 	GENERATED_BODY()
 
@@ -88,11 +92,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float MaxCombatRange = 500.f;
 	
-	// AI state
+	// AI system
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     EEnemyState CharacterState = EEnemyState::Idle;
 
 	FTimerHandle DecisionTimerHandle;
+
+	UPROPERTY(VisibleAnywhere, Category = "AI")
+	FPlayerActionRecord PlayerActionRecord;
 
 	// Animation montages
 
@@ -120,13 +127,30 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "GAS")
 	class UEnemyAttributeSet* AttributeSet;
 
+	UPROPERTY(VisibleAnywhere, Category = "UI")
+	UEnemyUIComponent* EnemyUIComponent;
+
+	UPROPERTY(VisibleAnywhere, Category = "UI")
+	UWidgetComponent* EnemyHealthWidgetComponent;
+
 	virtual void BeginPlay() override;
 
 	void SetCharacterState(EEnemyState NewState);
+
 public:
 	EEnemyState GetCharacterState() const { return CharacterState; }
 
+	FPlayerActionRecord& GetPlayerActionRecord() { return PlayerActionRecord; }
+
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return AbilitySystemComponent; }
+
+	virtual UEnemyUIComponent* GetEnemyUIComponent() const override { return EnemyUIComponent; }
+
+	virtual UPawnUIComponent* GetPawnUIComponent() const override { return nullptr; }
+
+	float GetCurrentHealth() const { return CurrentHealth; }
+
+	float GetMaxHealth() const { return MaxHealth; }
 
 	bool CanBeBackstabbed() const { return bAllowBackstab; }
 
