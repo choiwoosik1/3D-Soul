@@ -1,7 +1,9 @@
 #include "Enemy/EnemyAttributeSet.h"
+#include "Enemy/Enemy.h"
+#include "Interfaces/PawnUIInterface.h"
+#include "Components/UI/EnemyUIComponent.h"
 #include "Engine/DamageEvents.h"
 #include "GameFramework/Controller.h"
-#include "Enemy/Enemy.h"
 
 UEnemyAttributeSet::UEnemyAttributeSet()
 {
@@ -30,6 +32,14 @@ void UEnemyAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 				AActor* Causer = const_cast<AActor*>(Data.EffectSpec.GetContext().GetEffectCauser());
 
 				Enemy->TakeDamage(Damage, FDamageEvent(), Instigator, Causer);
+
+                if (IPawnUIInterface* UIInterface = Cast<IPawnUIInterface>(Enemy))
+                {
+                    if (UEnemyUIComponent* UIComp = Cast<UEnemyUIComponent>(UIInterface->GetPawnUIComponent()))
+                    {
+						UIComp->OnCurrentHealthChanged.Broadcast(Enemy->GetCurrentHealth() / Enemy->GetMaxHealth());
+                    }
+				}
             }
         }
     }

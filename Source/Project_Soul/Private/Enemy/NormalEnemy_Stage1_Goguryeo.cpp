@@ -84,16 +84,23 @@ void ANormalEnemy_Stage1_Goguryeo::FireProjectile_Implementation()
 	FVector MuzzleLocation = WeaponMesh->GetSocketLocation(MuzzleSocketName);
 	FRotator FireRotation = WeaponMesh->GetSocketRotation(MuzzleSocketName);
 
-	// Calculate lead for moving targets
 	AAIController* AIC = Cast<AAIController>(GetController());
 	if (AIC && AIC->GetFocusActor())
 	{
+		// Record attack movement direction vector
+		PlayerActionRecord.SetAttackDirection(GetActorForwardVector());
+
+		// Calculate lead for moving targets
 		FVector TargetLocation = AIC->GetFocusActor()->GetActorLocation();
 		FVector TargetVelocity = AIC->GetFocusActor()->GetVelocity();
 		float Distance = FVector::Dist(MuzzleLocation, TargetLocation);
 		float TimeToTarget = Distance / ProjectileSpeed;
+		FVector PredictedLocation = TargetLocation + TargetVelocity * TimeToTarget / 1.7f;
 
-		FireRotation = (TargetLocation + TargetVelocity * TimeToTarget / 1.8f - MuzzleLocation).Rotation();
+		// Add predicted player dodge location
+		PredictedLocation += GetActorTransform().TransformVectorNoScale(PlayerActionRecord.GetCorrectedOffset()); 
+		
+		FireRotation = (PredictedLocation - MuzzleLocation).Rotation();
 	}
 
 	FActorSpawnParameters SpawnParams;

@@ -1,4 +1,10 @@
 #include "Enemy/Enemy.h"
+#include "AbilitySystemComponent.h"
+#include "Enemy/EnemyAttributeSet.h"
+#include "Components/UI/EnemyUIComponent.h"
+#include "Components/WidgetComponent.h"
+#include "Widgets/KwangWidgetBase.h"
+#include "KwangGameplayTags.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
@@ -12,6 +18,10 @@ AEnemy::AEnemy()
     PrimaryActorTick.bCanEverTick = false;
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AttributeSet = CreateDefaultSubobject<UEnemyAttributeSet>(TEXT("AttributeSet"));
+
+	EnemyUIComponent = CreateDefaultSubobject<UEnemyUIComponent>(TEXT("EnemyUIComponent"));
+	EnemyHealthWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("EnemyHealthWidgetComponent"));
+	EnemyHealthWidgetComponent->SetupAttachment(GetMesh());
 }
 
 // Called when the game starts or when spawned
@@ -21,11 +31,17 @@ void AEnemy::BeginPlay()
 
 	AbilitySystemComponent->InitAbilityActorInfo(this, this);
 
+	if (UKwangWidgetBase* HealthWidget = Cast<UKwangWidgetBase>(EnemyHealthWidgetComponent->GetUserWidgetObject()))
+    {
+        HealthWidget->InitEnemyCreatedWidget(this);
+    }
+
 	CurrentHealth = MaxHealth;
     LimitPoise = MaxPoise;
     CurrentPoise = LimitPoise;
 
 	SetCharacterState(EEnemyState::Idle);
+    GetCharacterMovement()->MaxAcceleration = 4000.f;
     GetCharacterMovement()->bOrientRotationToMovement = false;
     GetCharacterMovement()->bUseControllerDesiredRotation = true;
     bUseControllerRotationYaw = false;
@@ -212,13 +228,24 @@ void AEnemy::FinishAttackPattern()
 // Enable the weapon hitbox for the current attack
 void AEnemy::EnableWeaponHitbox()
 {
-
+    UE_LOG(LogTemp, Warning, TEXT("Pattern: %d / Attack: %d / Damage: %.1f"), PatternIdx, AttackIdx,
+        BaseDamage * Patterns[PatternIdx].Attacks[AttackIdx].DamageMultiplier);
 }
 
 // Disable the weapon hitbox after the attack
 void AEnemy::DisableWeaponHitbox()
 {
-
+    // Record player dodge vector if the attack was missed
+    if ((AlreadyHitActors.Num() <= 0) && Patterns[PatternIdx].Attacks[AttackIdx].MovementSpeed > 0)
+    {
+        AAIController* AIC = Cast<AAIController>(GetController());
+        if (AIC && AIC->GetFocusActor())
+        {
+            FVector ToPlayer = AIC->GetFocusActor()->GetActorLocation() - GetActorLocation();
+            FVector ToPlayerDir = PlayerActionRecord.GetAttackTransform().TransformVector(ToPlayer);
+            PlayerActionRecord.RecordDodge(ToPlayerDir);
+        }
+    }
 }
 
 void AEnemy::OnWeaponHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
@@ -235,7 +262,7 @@ void AEnemy::OnWeaponHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActor* 
 
     UGameplayStatics::ApplyDamage(OtherActor, BaseDamage * Multiplier, GetController(), this, nullptr);
 
-    UE_LOG(LogTemp, Warning, TEXT("Hit: %s, %s / Pattern: %d / HitIndex: %d / Damage: %.1f"),
+    UE_LOG(LogTemp, Warning, TEXT("Hit: %s, %s / Pattern: %d / Attack: %d / Damage: %.1f"),
         *OtherActor->GetName(), *OtherComp->GetName(), PatternIdx, AttackIdx,
         BaseDamage * Patterns[PatternIdx].Attacks[AttackIdx].DamageMultiplier);
 }
@@ -263,6 +290,7 @@ void AEnemy::DisableAttackRotation()
     GetCharacterMovement()->RotationRate = FRotator::ZeroRotator;
 }
 
+// Enable movement during an attack, recording forward vector to calculate player dodge direction
 void AEnemy::EnableAttackMovement()
 {
     if (!Patterns.IsValidIndex(PatternIdx)) return;
@@ -271,11 +299,20 @@ void AEnemy::EnableAttackMovement()
 
 	if (Attack.MovementSpeed > 0.f)
     {
-        GetCharacterMovement()->MaxWalkSpeed = Attack.MovementSpeed;
+        // Record attack movement direction vector
+        PlayerActionRecord.SetAttackDirection(GetActorForwardVector()); 
+
 		AAIController* AIC = Cast<AAIController>(GetController());
         if (AIC && AIC->GetFocusActor())
         {
-            AIC->MoveToActor(AIC->GetFocusActor(), MinCombatRange);
+            GetCharacterMovement()->MaxWalkSpeed = Attack.MovementSpeed;
+
+            FVector TargetLocation = AIC->GetFocusActor()->GetActorLocation();
+            
+            // Add predicted player dodge location
+            TargetLocation += GetActorTransform().TransformVectorNoScale(PlayerActionRecord.GetCorrectedOffset());
+
+            AIC->MoveToLocation(TargetLocation);
         }
     }
 }
