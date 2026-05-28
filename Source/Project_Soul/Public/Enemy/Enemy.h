@@ -93,6 +93,9 @@ protected:
 	float MaxCombatRange = 500.f;
 	
 	// AI system
+	UPROPERTY(EditAnywhere, Category = "AI")
+	class UBehaviorTree* BTAsset;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     EEnemyState CharacterState = EEnemyState::Idle;
 

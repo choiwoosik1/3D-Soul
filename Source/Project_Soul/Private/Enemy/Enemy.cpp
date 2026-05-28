@@ -310,7 +310,7 @@ void AEnemy::EnableAttackMovement()
             FVector TargetLocation = AIC->GetFocusActor()->GetActorLocation();
             
             // Add predicted player dodge location
-            TargetLocation += GetActorTransform().TransformVectorNoScale(PlayerActionRecord.GetCorrectedOffset());
+            TargetLocation += GetActorTransform().TransformVector(PlayerActionRecord.GetCorrectedOffset());
 
             AIC->MoveToLocation(TargetLocation);
         }
