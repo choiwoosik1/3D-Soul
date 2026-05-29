@@ -4,6 +4,7 @@
 #include "Characters/KwangBaseCharacters.h"
 #include "AbilitySystem/KwangAbilitySystemComponent.h"
 #include "AbilitySystem/KwangAttributeSet.h"
+#include "MotionWarpingComponent.h"
 
 // Sets default values
 AKwangBaseCharacters::AKwangBaseCharacters()
@@ -21,6 +22,7 @@ AKwangBaseCharacters::AKwangBaseCharacters()
 
 	KwangAbilitySystemComponent = CreateDefaultSubobject<UKwangAbilitySystemComponent>(TEXT("KwangAbilitySystemComponent"));
 	KwangAttributeSet = CreateDefaultSubobject<UKwangAttributeSet>(TEXT("KwangAttributeSet"));
+	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComponent"));
 }
 
 UAbilitySystemComponent* AKwangBaseCharacters::GetAbilitySystemComponent() const

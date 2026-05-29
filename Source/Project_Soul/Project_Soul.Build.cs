@@ -19,7 +19,8 @@ public class Project_Soul : ModuleRules
 			"GameplayTasks",
 			"Kismet",
 			"NavigationSystem",
-		});
+            "MotionWarping"
+        });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

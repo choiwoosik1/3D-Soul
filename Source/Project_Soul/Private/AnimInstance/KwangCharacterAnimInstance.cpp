@@ -35,4 +35,11 @@ void UKwangCharacterAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSec
 	// GetCurrentAcceleration()으로 유저가 키보드(WASD)를 눌러서 힘을 가하고 있는지 확인합니다.
 	// SizeSquared2D()가 0보다 크다는 것은 "조금이라도 힘이 들어가고 있다(true)"는 뜻
 	bHasAcceleration = OwningMovementComponent->GetCurrentAcceleration().SizeSquared2D() > 0.f;
+
+	// 4. 이동 방향 계산 (LocomotionDirection)
+// 캐릭터가 바라보는 방향(Rotation)과 실제 이동 방향(Velocity) 사이의 각도 차이
+	LocomotionDirection = CalculateDirection(
+		OwningCharacter->GetVelocity(),
+		OwningCharacter->GetActorRotation()
+	);
 }

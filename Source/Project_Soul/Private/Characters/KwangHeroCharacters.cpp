@@ -14,6 +14,9 @@
 #include "DataAssets/StartUpData/DataAsset_HeroStartUpData.h"
 #include "Components/Combat/HeroCombatComponent.h"
 #include "Components/UI/HeroUIComponent.h"
+#include "AbilitySystemBlueprintLibrary.h"
+#include "AbilitySystem/KwangAttributeSet.h"
+#include "KwangFunctionLibrary.h"
 
 #include "KwangDebugHelper.h"
 
@@ -201,6 +204,76 @@ void AKwangHeroCharacters::Input_AbilityInputReleased(FGameplayTag InInputTag)
 	// [핵심 로직] 마찬가지로 뇌(ASC)에게 "아까 누른 그 버튼, 방금 손 뗐다!" 라고 상황을 전달함.
 	// 뇌는 이 보고를 받고 '기 모으기(차징) 스킬 이제 발사해라' 혹은 '누르고 있을 때만 나가는 방패 막기 스킬 꺼라' 같은 판단을 내리게 됨.
 	KwangAbilitySystemComponent->OnAbilityInputReleased(InInputTag);
+}
+
+float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	if (ActualDamage > 0.f)
+	{
+		if (IsBlocking() && DamageCauser)
+		{
+			if (UKwangFunctionLibrary::IsValidBlock(DamageCauser, this))
+			{
+				// 패링 타이밍 체크
+				if (UKwangFunctionLibrary::NativeDoesActorHaveTag(
+					this, KwangGameplayTags::Player_Status_Parrying))
+				{
+					// 패링 성공: 데미지 0, 이벤트 전송
+					FGameplayEventData EventData;
+					EventData.Instigator = DamageCauser;
+					EventData.Target = this;
+					UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+						this, KwangGameplayTags::Player_Event_Parry, EventData);
+
+					// 임시 디버그
+					Debug::Print(TEXT("Parry Success!"), FColor::Green);
+
+					return 0.f;
+				}
+
+				// 일반 블록: 데미지 70% 경감, HitReact 없이 종료
+				ActualDamage *= 0.3f;
+				UKwangAbilitySystemComponent* ASC = UKwangFunctionLibrary::NativeGetKwangASCFromActor(this);
+				if (ASC && DamageEffectClass)
+				{
+					FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(
+						DamageEffectClass, 1.f, ASC->MakeEffectContext());
+					UAbilitySystemBlueprintLibrary::AssignTagSetByCallerMagnitude(
+						SpecHandle, KwangGameplayTags::Shared_SetByCaller_BaseDamage, ActualDamage);
+					ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+				}
+				return ActualDamage;
+			}
+		}
+
+		// 일반 피격: 체력 감소 + HitReact
+		UKwangAbilitySystemComponent* ASC = UKwangFunctionLibrary::NativeGetKwangASCFromActor(this);
+		if (ASC && DamageEffectClass)
+		{
+			FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(
+				DamageEffectClass, 1.f, ASC->MakeEffectContext());
+			UAbilitySystemBlueprintLibrary::AssignTagSetByCallerMagnitude(
+				SpecHandle, KwangGameplayTags::Shared_SetByCaller_BaseDamage, ActualDamage);
+			ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		}
+
+		FGameplayEventData EventData;
+		EventData.Instigator = DamageCauser;
+		EventData.Target = this;
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+			this, KwangGameplayTags::Shared_Event_HitReact, EventData);
+	}
+
+	return ActualDamage;
+}
+
+bool AKwangHeroCharacters::IsBlocking() const
+{
+	return UKwangFunctionLibrary::NativeDoesActorHaveTag(
+		const_cast<AKwangHeroCharacters*>(this),
+		KwangGameplayTags::Player_Status_Blocking);
 }
 
 // Called when the game starts or when spawned

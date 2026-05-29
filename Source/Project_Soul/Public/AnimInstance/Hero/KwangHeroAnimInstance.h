@@ -44,6 +44,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AnimData|LocomotionData")
 	float EnterDeepBreathStateThreshold = 7.f;
 
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	UKwangHeroAnimInstance* GetHeroAnimInstance();
+
 	// [내부 타이머] 실제로 캐릭터가 가만히 서 있던 시간을 누적해서 잴 스톱워치 변수
 	float IdleElpasedTime;
 };
