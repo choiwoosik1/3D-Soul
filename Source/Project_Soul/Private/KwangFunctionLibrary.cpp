@@ -5,6 +5,8 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystem/KwangAbilitySystemComponent.h"
 #include "Interfaces/PawnCombatInterface.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "KwangGameplayTags.h"
 
 #include "KwangDebugHelper.h"
 
@@ -30,7 +32,7 @@ void UKwangFunctionLibrary::RemoveGameplayTagFromActorIfFound(AActor* InActor, F
 {
     UKwangAbilitySystemComponent* ASC = NativeGetKwangASCFromActor(InActor);
 
-    if (!ASC->HasMatchingGameplayTag(TagToRemove))
+    if (ASC->HasMatchingGameplayTag(TagToRemove))
     {
         ASC->RemoveLooseGameplayTag(TagToRemove);
     }
@@ -39,6 +41,8 @@ void UKwangFunctionLibrary::RemoveGameplayTagFromActorIfFound(AActor* InActor, F
 bool UKwangFunctionLibrary::NativeDoesActorHaveTag(AActor* InActor, FGameplayTag TagToCheck)
 {
     UKwangAbilitySystemComponent* ASC = NativeGetKwangASCFromActor(InActor);
+
+    if (!ASC) return false;
 
     return ASC->HasMatchingGameplayTag(TagToCheck);
 }
@@ -73,6 +77,46 @@ UPawnCombatComponent* UKwangFunctionLibrary::BP_GetPawnCombatComponentFromActor(
 float UKwangFunctionLibrary::GetScalableFloatValueAtLevel(const FScalableFloat& InScalableFloat, float InLevel)
 {
     return InScalableFloat.GetValueAtLevel(InLevel);
+}
+
+FGameplayTag UKwangFunctionLibrary::ComputeHitReactDirectionTag(AActor* InAttacker, AActor* InVictim, float& OutAngleDifference)
+{
+    check(InAttacker && InVictim);
+
+    const FVector VictimForward = InVictim->GetActorForwardVector();
+    const FVector VictimToAttackerNormalized = (InAttacker->GetActorLocation() - InVictim->GetActorLocation()).GetSafeNormal();
+
+    const float DotResult = FVector::DotProduct(VictimForward, VictimToAttackerNormalized);
+    OutAngleDifference = UKismetMathLibrary::DegAcos(DotResult);
+
+    const FVector CrossResult = FVector::CrossProduct(VictimForward, VictimToAttackerNormalized);
+
+    if (CrossResult.Z < 0.f)
+    {
+        OutAngleDifference *= -1.f;
+    }
+
+    if (OutAngleDifference >= -45.f && OutAngleDifference <= 45.f)
+    {
+        return KwangGameplayTags::Shared_Status_HitReact_Front;
+    }
+
+    else if (OutAngleDifference < -45.f && OutAngleDifference >= -135.f)
+    {
+        return KwangGameplayTags::Shared_Status_HitReact_Left;
+    }
+
+    else if (OutAngleDifference < -135.f || OutAngleDifference > 135.f)
+    {
+        return KwangGameplayTags::Shared_Status_HitReact_Back;
+    }
+
+    else if (OutAngleDifference > 45.f && OutAngleDifference <= 135.f)
+    {
+        return KwangGameplayTags::Shared_Status_HitReact_Right;
+    }
+
+    return FGameplayTag();
 }
 
 bool UKwangFunctionLibrary::IsValidBlock(AActor* InAttacker, AActor* InDefender)

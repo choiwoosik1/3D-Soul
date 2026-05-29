@@ -15,6 +15,7 @@ class UDataAsset_InputConfig;
 struct FInputActionValue;
 class UHeroCombatComponent;
 class UHeroUIComponent;
+class UGameplayEffect;
 
 UCLASS()
 class PROJECT_SOUL_API AKwangHeroCharacters : public AKwangBaseCharacters
@@ -89,6 +90,21 @@ private:
 	void Input_AbilityInputReleased(FGameplayTag InInputTag);
 #pragma endregion
 
+#pragma region Combat
+public:
+	bool IsBlocking() const;
+#pragma endregion
+
 public:
 	FORCEINLINE UHeroCombatComponent* GetHeroCombatComponent() const{ return HeroCombatComponent; }
+
+	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
+		AController* EventInstigator, AActor* DamageCauser) override;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Combat")
+	UAnimMontage* HitReactMontage;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Combat")
+	TSubclassOf<UGameplayEffect> DamageEffectClass;
+
 };

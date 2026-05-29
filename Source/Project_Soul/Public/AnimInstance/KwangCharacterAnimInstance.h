@@ -42,4 +42,8 @@ protected:
 	// 유저가 현재 키보드(WASD)나 패드로 '가속(이동 명령)'을 하고 있는지 여부
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AnimData|LocomotionData ")
 	bool bHasAcceleration;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "AnimData|LocomotionData")
+	float LocomotionDirection;
+
 };

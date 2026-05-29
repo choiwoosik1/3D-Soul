@@ -62,3 +62,8 @@ void UKwangHeroAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
 		bShouldEnterDeepBreathState = (IdleElpasedTime >= EnterDeepBreathStateThreshold);
 	}
 }
+
+UKwangHeroAnimInstance* UKwangHeroAnimInstance::GetHeroAnimInstance()
+{
+	return this;
+}
