@@ -20,6 +20,7 @@ ANormalEnemy_Stage1_Baekje::ANormalEnemy_Stage1_Baekje()
 void ANormalEnemy_Stage1_Baekje::BeginPlay()
 {
 	Super::BeginPlay();
+
 	WeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Baekje::OnWeaponHitboxOverlap);
 }
 

@@ -1,16 +1,8 @@
 #include "Enemy/Enemy.h"
-#include "AbilitySystemComponent.h"
-#include "Enemy/EnemyAttributeSet.h"
-#include "Components/UI/EnemyUIComponent.h"
-#include "Components/WidgetComponent.h"
-#include "Widgets/KwangWidgetBase.h"
-#include "KwangGameplayTags.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "AbilitySystemComponent.h"
-#include "Enemy/EnemyAttributeSet.h"
 
 // Sets default values
 AEnemy::AEnemy()
@@ -215,8 +207,10 @@ void AEnemy::FinishAttackPattern()
 // Enable the weapon hitbox for the current attack
 void AEnemy::EnableWeaponHitbox()
 {
+    /*
     UE_LOG(LogTemp, Warning, TEXT("Pattern: %d / Attack: %d / Damage: %.1f"), PatternIdx, AttackIdx,
         BaseDamage * Patterns[PatternIdx].Attacks[AttackIdx].DamageMultiplier);
+    */
 }
 
 // Disable the weapon hitbox after the attack
@@ -238,19 +232,23 @@ void AEnemy::DisableWeaponHitbox()
 void AEnemy::OnWeaponHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-    if (!Patterns.IsValidIndex(PatternIdx) || !Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
+    if (!Patterns.IsValidIndex(PatternIdx)) return;
+    FAttackPattern Pattern = Patterns[PatternIdx];
+    
+    if (!Pattern.Attacks.IsValidIndex(AttackIdx)) return;
+    FAttackProperties Attack = Pattern.Attacks[AttackIdx];
+
     if (!OtherActor || OtherActor == this || AlreadyHitActors.Contains(OtherActor) || Cast<AEnemy>(OtherActor)) return;
     if (OtherComp != Cast<ACharacter>(OtherActor)->GetMesh()) return;
 
     AlreadyHitActors.Add(OtherActor);
 
-    float Multiplier = Patterns[PatternIdx].Attacks[AttackIdx].DamageMultiplier;
+    float Multiplier = Attack.DamageMultiplier;
 
     UGameplayStatics::ApplyDamage(OtherActor, BaseDamage * Multiplier, GetController(), this, nullptr);
 
-    UE_LOG(LogTemp, Warning, TEXT("Hit: %s, %s / Pattern: %d / Attack: %d / Damage: %.1f"),
-        *OtherActor->GetName(), *OtherComp->GetName(), PatternIdx, AttackIdx,
-        BaseDamage * Patterns[PatternIdx].Attacks[AttackIdx].DamageMultiplier);
+    UE_LOG(LogTemp, Warning, TEXT("Hit: %s / Pattern: %d / Attack: %d / Damage: %.1f"),
+        *OtherActor->GetName(), PatternIdx, AttackIdx, BaseDamage * Multiplier);
 }
 
 // Enable rotation during an attack, adjusting rotation speed based on the attack properties
