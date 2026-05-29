@@ -1,12 +1,23 @@
 #include "Enemy/Enemy_Boss_Stage1.h"
 #include "AIController.h"
-#include "BehaviorTree/BlackboardComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "BehaviorTree/BlackboardComponent.h"
+#include "Components/BoxComponent.h"
+#include "Delegates/Delegate.h"
 
 AEnemy_Boss_Stage1::AEnemy_Boss_Stage1()
 {
 	AIControllerClass = AAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+
+	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
+	WeaponMesh->SetupAttachment(GetMesh(), FName("HandGrip_R"));
+
+	WeaponHitbox = CreateDefaultSubobject<UBoxComponent>(TEXT("WeaponHitbox"));
+	WeaponHitbox->SetupAttachment(WeaponMesh);
+	WeaponHitbox->SetCollisionObjectType(ECC_WorldDynamic);
+	WeaponHitbox->SetCollisionResponseToAllChannels(ECR_Ignore);
+	WeaponHitbox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 }
 
 void AEnemy_Boss_Stage1::BeginPlay()
@@ -17,6 +28,8 @@ void AEnemy_Boss_Stage1::BeginPlay()
 	AIC->RunBehaviorTree(BTAsset);
 	AIC->GetBlackboardComponent()->SetValueAsFloat(FName("MinCombatRange"), MinCombatRange);
 	AIC->GetBlackboardComponent()->SetValueAsFloat(FName("MaxCombatRange"), MaxCombatRange);
+
+	WeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &AEnemy_Boss_Stage1::OnWeaponHitboxOverlap);
 
 	GetWorldTimerManager().SetTimer(UpdateSpeedTimerHandle, this, &AEnemy_Boss_Stage1::UpdateSpeed, 0.1f, true);
 }
@@ -80,4 +93,34 @@ void AEnemy_Boss_Stage1::UpdateSpeed()
 	SetSpeedByDistance(Distance);
 
 	Cast<AAIController>(GetController())->GetBlackboardComponent()->SetValueAsFloat(FName("DistanceToTarget"), Distance);
+}
+
+// Enable the weapon hitbox for collision detection during attack animations
+void AEnemy_Boss_Stage1::EnableWeaponHitbox()
+{
+	Super::EnableWeaponHitbox();
+
+	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+}
+
+// Disable the weapon hitbox to prevent unintended collisions outside of attack animations
+void AEnemy_Boss_Stage1::DisableWeaponHitbox()
+{
+	Super::DisableWeaponHitbox();
+
+	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	AlreadyHitActors.Empty();
+	AttackIdx++;
+}
+
+void AEnemy_Boss_Stage1::Die()
+{
+	Super::Die();
+
+	if (WeaponMesh)
+	{
+		WeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+		WeaponMesh->SetSimulatePhysics(true);
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+	}
 }
