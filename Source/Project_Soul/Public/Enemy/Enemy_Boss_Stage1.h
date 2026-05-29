@@ -13,10 +13,14 @@ public:
 	AEnemy_Boss_Stage1();
 
 protected:
+	FTimerHandle UpdateSpeedTimerHandle;
+
 	virtual void BeginPlay() override;
 
 	UFUNCTION(BlueprintCallable)
 	void StartBossFight();
 
 	virtual void DecideNextAction() override;
+
+	void UpdateSpeed();
 };

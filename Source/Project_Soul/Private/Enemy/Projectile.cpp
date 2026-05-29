@@ -83,7 +83,7 @@ void AProjectile::Tick(float DeltaTime)
 void AProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
     UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-    if (!OtherActor || OtherActor == GetInstigator()) return;
+    if (!OtherActor || OtherActor == GetInstigator() || Cast<AEnemy>(OtherActor)) return;
 
     UGameplayStatics::ApplyDamage(OtherActor, Damage, GetInstigator()->GetController(), this, nullptr);
    

@@ -16,25 +16,12 @@
 AEnemy::AEnemy()
 {
     PrimaryActorTick.bCanEverTick = false;
-	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
-	AttributeSet = CreateDefaultSubobject<UEnemyAttributeSet>(TEXT("AttributeSet"));
-
-	EnemyUIComponent = CreateDefaultSubobject<UEnemyUIComponent>(TEXT("EnemyUIComponent"));
-	EnemyHealthWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("EnemyHealthWidgetComponent"));
-	EnemyHealthWidgetComponent->SetupAttachment(GetMesh());
 }
 
 // Called when the game starts or when spawned
 void AEnemy::BeginPlay()
 {
 	Super::BeginPlay();
-
-	AbilitySystemComponent->InitAbilityActorInfo(this, this);
-
-	if (UKwangWidgetBase* HealthWidget = Cast<UKwangWidgetBase>(EnemyHealthWidgetComponent->GetUserWidgetObject()))
-    {
-        HealthWidget->InitEnemyCreatedWidget(this);
-    }
 
 	CurrentHealth = MaxHealth;
     LimitPoise = MaxPoise;
@@ -99,7 +86,7 @@ void AEnemy::SetCharacterState(EEnemyState NewState)
 }
 
 // Adjust the character's movement speed in combat state based on the distance to the target
-void AEnemy::SetCharacterSpeedByDistance(float Distance)
+void AEnemy::SetSpeedByDistance(float Distance)
 {
 	// If the distance is less than or equal to the maximum combat range, set the speed to StrafeSpeed
     if (Distance <= MaxCombatRange)
@@ -251,9 +238,8 @@ void AEnemy::DisableWeaponHitbox()
 void AEnemy::OnWeaponHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-    if (!Patterns.IsValidIndex(PatternIdx)) return;
-    if (!Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
-    if (!OtherActor || OtherActor == this || AlreadyHitActors.Contains(OtherActor)) return;
+    if (!Patterns.IsValidIndex(PatternIdx) || !Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
+    if (!OtherActor || OtherActor == this || AlreadyHitActors.Contains(OtherActor) || Cast<AEnemy>(OtherActor)) return;
     if (OtherComp != Cast<ACharacter>(OtherActor)->GetMesh()) return;
 
     AlreadyHitActors.Add(OtherActor);

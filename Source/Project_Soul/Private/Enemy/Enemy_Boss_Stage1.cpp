@@ -15,6 +15,10 @@ void AEnemy_Boss_Stage1::BeginPlay()
 
 	AAIController* AIC = Cast<AAIController>(GetController());
 	AIC->RunBehaviorTree(BTAsset);
+	AIC->GetBlackboardComponent()->SetValueAsFloat(FName("MinCombatRange"), MinCombatRange);
+	AIC->GetBlackboardComponent()->SetValueAsFloat(FName("MaxCombatRange"), MaxCombatRange);
+
+	GetWorldTimerManager().SetTimer(UpdateSpeedTimerHandle, this, &AEnemy_Boss_Stage1::UpdateSpeed, 0.1f, true);
 }
 
 void AEnemy_Boss_Stage1::StartBossFight()
@@ -63,4 +67,17 @@ void AEnemy_Boss_Stage1::DecideNextAction()
 		PerformAttackPattern(SelectedIdx);
 		return;
 	}
+}
+
+void AEnemy_Boss_Stage1::UpdateSpeed()
+{
+	if (CharacterState != EEnemyState::InCombat) return;
+
+	APawn* Player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	if (!Player) return;
+
+	float Distance = FVector::Dist(GetActorLocation(), Player->GetActorLocation());
+	SetSpeedByDistance(Distance);
+
+	Cast<AAIController>(GetController())->GetBlackboardComponent()->SetValueAsFloat(FName("DistanceToTarget"), Distance);
 }
