@@ -18,7 +18,7 @@ protected:
     class UStaticMeshComponent* MeshComponent;
 
     UPROPERTY(VisibleAnywhere, Category = "Components")
-    class USphereComponent* CollisionComponent;
+    class UBoxComponent* CollisionComponent;
 
     UPROPERTY(VisibleAnywhere, Category = "Components")
     class UProjectileMovementComponent* ProjectileMovement;

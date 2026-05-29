@@ -93,6 +93,11 @@ struct FPlayerActionRecord
         DodgeRecord.AttackDir = Dir;
     }
 
+    FVector GetAttackDirection()
+    {
+        return DodgeRecord.AttackDir;
+    }
+
     FMatrix GetAttackTransform()
     {
         return FRotationMatrix(DodgeRecord.AttackDir.Rotation()).Inverse();

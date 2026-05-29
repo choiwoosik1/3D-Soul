@@ -2,17 +2,12 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "AbilitySystemInterface.h"
-#include "Interfaces/PawnUIInterface.h"
-#include "Components/WidgetComponent.h"
 #include "Enemy/EnemyTypes.h"
 #include "Enemy.generated.h"
 
 // Enemy character class
 UCLASS()
-class PROJECT_SOUL_API AEnemy : public ACharacter,
-	public IAbilitySystemInterface,
-	public IPawnUIInterface
+class PROJECT_SOUL_API AEnemy : public ACharacter
 {
 	GENERATED_BODY()
 
@@ -93,6 +88,9 @@ protected:
 	float MaxCombatRange = 500.f;
 	
 	// AI system
+	UPROPERTY(EditAnywhere, Category = "AI")
+	class UBehaviorTree* BTAsset;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     EEnemyState CharacterState = EEnemyState::Idle;
 
@@ -121,18 +119,6 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Animation")
 	UAnimMontage* DeathMontage = nullptr;
 
-	UPROPERTY(VisibleAnywhere, Category = "GAS")
-	UAbilitySystemComponent* AbilitySystemComponent;
-
-	UPROPERTY(VisibleAnywhere, Category = "GAS")
-	class UEnemyAttributeSet* AttributeSet;
-
-	UPROPERTY(VisibleAnywhere, Category = "UI")
-	UEnemyUIComponent* EnemyUIComponent;
-
-	UPROPERTY(VisibleAnywhere, Category = "UI")
-	UWidgetComponent* EnemyHealthWidgetComponent;
-
 	virtual void BeginPlay() override;
 
 	void SetCharacterState(EEnemyState NewState);
@@ -142,12 +128,6 @@ public:
 
 	FPlayerActionRecord& GetPlayerActionRecord() { return PlayerActionRecord; }
 
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return AbilitySystemComponent; }
-
-	virtual UEnemyUIComponent* GetEnemyUIComponent() const override { return EnemyUIComponent; }
-
-	virtual UPawnUIComponent* GetPawnUIComponent() const override { return nullptr; }
-
 	float GetCurrentHealth() const { return CurrentHealth; }
 
 	float GetMaxHealth() const { return MaxHealth; }
@@ -156,7 +136,7 @@ public:
 
 	bool CanBeCriticalHit() const { return CharacterState == EEnemyState::Groggy; }
 
-	virtual void SetCharacterSpeedByDistance(float Distance);
+	virtual void SetSpeedByDistance(float Distance);
 
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, 
 		class AController* EventInstigator, AActor* DamageCauser) override;
