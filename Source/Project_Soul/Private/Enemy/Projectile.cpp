@@ -58,10 +58,12 @@ void AProjectile::Tick(float DeltaTime)
     FVector ToTarget = Player->GetActorLocation() - GetActorLocation();
     FVector CurrentDirection = ProjectileMovement->Velocity.GetSafeNormal();
 
+    // Disable projectile homing when the projectile has missed the target
     if (FVector::DotProduct(CurrentDirection, ToTarget.GetSafeNormal()) < 0.f)
     {
         ProjectileMovement->bIsHomingProjectile = false;
 
+        // Record player dodge location
         AEnemy* Enemy = Cast<AEnemy>(GetInstigator());
         if (Enemy)
         {
@@ -73,11 +75,18 @@ void AProjectile::Tick(float DeltaTime)
         return;
     }
 
+    // Adjust homing location with the predicted player movement
 	FVector TargetVelocity = Player->GetVelocity();
 	float Distance = ToTarget.Size();
 	float TimeToTarget = Distance / ProjectileMovement->InitialSpeed;
-
 	HomingTarget->SetWorldLocation(Player->GetActorLocation() + TargetVelocity * TimeToTarget);
+
+    // Reduce homing acceleration as the projectile gets closer to the target
+    if (Distance < 500.f)
+    {
+        float Alpha = FMath::Clamp(Distance / 500.f, 0.3f, 1.f);
+        ProjectileMovement->HomingAccelerationMagnitude = FMath::Lerp(0.f, HomingAcceleration, Alpha);
+    }
 }
 
 void AProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,

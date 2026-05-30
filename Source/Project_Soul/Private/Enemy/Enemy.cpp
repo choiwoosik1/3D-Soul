@@ -239,7 +239,6 @@ void AEnemy::OnWeaponHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActor* 
     FAttackProperties Attack = Pattern.Attacks[AttackIdx];
 
     if (!OtherActor || OtherActor == this || AlreadyHitActors.Contains(OtherActor) || Cast<AEnemy>(OtherActor)) return;
-    if (OtherComp != Cast<ACharacter>(OtherActor)->GetMesh()) return;
 
     AlreadyHitActors.Add(OtherActor);
 
