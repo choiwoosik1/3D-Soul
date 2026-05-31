@@ -33,6 +33,7 @@ namespace KwangGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Player_Status_Blocking, "Player.Status.Blocking");
 	UE_DEFINE_GAMEPLAY_TAG(Player_Status_TargetLock, "Player.Status.TargetLock");
 	UE_DEFINE_GAMEPLAY_TAG(Player_Status_Parrying, "Player.Status.Parrying");
+	UE_DEFINE_GAMEPLAY_TAG(Player_Status_RegenBlocked, "Player.Status.RegenBlocked");
 
 	UE_DEFINE_GAMEPLAY_TAG(Player_SetByCaller_AttackType_Light, "Player.SetByCaller.AttackType.Light");
 	UE_DEFINE_GAMEPLAY_TAG(Player_SetByCaller_AttackType_Heavy, "Player.SetByCaller.AttackType.Heavy");

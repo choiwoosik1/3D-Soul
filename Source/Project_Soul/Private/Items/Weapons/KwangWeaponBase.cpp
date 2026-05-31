@@ -31,8 +31,8 @@ AKwangWeaponBase::AKwangWeaponBase()
 
 	// 6. [안전 장치] 태어날 때는 충돌 센서를 "꺼짐(NoCollision)" 상태로 만듦.
 	WeaponCollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	WeaponCollisionBox->SetHiddenInGame(false);
-	WeaponCollisionBox->SetVisibility(true);
+	WeaponCollisionBox->SetHiddenInGame(true);
+	WeaponCollisionBox->SetVisibility(false);
 
 	WeaponCollisionBox->OnComponentBeginOverlap.AddUniqueDynamic(this, &ThisClass::OnCollisionBoxBeginOverlap);
 	WeaponCollisionBox->OnComponentEndOverlap.AddUniqueDynamic(this, &ThisClass::OnCollisionBoxEndOverlap);
