@@ -106,14 +106,16 @@ void AEnemy::SetSpeedByDistance(float Distance)
 
 // Handle incoming damage, update health and poise,
 // And determine if the enemy should stagger, enter groggy state, or die
-float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, 
+// Handle incoming damage, update health and poise,
+// And determine if the enemy should stagger, enter groggy state, or die
+float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
     AController* EventInstigator, AActor* DamageCauser)
 {
     if (CharacterState == EEnemyState::Dead) return 0.f;
-    
+
     float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
-	// Apply backstab or critical hit multipliers if applicable, and reset the flags
+    // Apply backstab or critical hit multipliers if applicable, and reset the flags
     if (bBackstabbed)
     {
         if (DamageCauser != AttackInitiator) return 0.f;
@@ -123,30 +125,44 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
     }
     else if (bCriticalHit)
     {
-		if (DamageCauser != AttackInitiator) return 0.f;
+        if (DamageCauser != AttackInitiator) return 0.f;
         ActualDamage *= CriticalHitMultiplier;
         bCriticalHit = false;
     }
-    
-	// Reduce health by the actual damage amount
+
+    // [수정된 부분] 체력을 깎기 직전에 현재 체력을 저장해 둡니다.
+    /*float PreviousHealth = CurrentHealth;*/
+
+    // Reduce health by the actual damage amount
     CurrentHealth = FMath::Clamp(CurrentHealth - ActualDamage, 0.0f, MaxHealth);
+
+    // [수정된 부분] 글자 깨짐 방지를 위해 영어로 로그를 출력합니다.
+    /*UE_LOG(LogTemp, Warning, TEXT("Hit Enemy: %s | Damage: %f | Health: %f -> %f"),
+        *GetName(), ActualDamage, PreviousHealth, CurrentHealth);
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red,
+            FString::Printf(TEXT("Enemy HP: %f / %f"), CurrentHealth, MaxHealth));
+    }*/
+
     if (CurrentHealth <= 0.0f)
     {
         Die();
         return ActualDamage;
     }
 
-	// Poise reduction logic
+    // Poise reduction logic
     if (CurrentPoise > 0)
     {
         CurrentPoise -= DamageAmount;
         if (CurrentPoise <= 0)
-        {   
-			// Reduce Limit Poise
+        {
+            // Reduce Limit Poise
             float PoiseReduction = MaxPoise * LimitPoiseReductionRate;
             LimitPoise = FMath::Clamp(LimitPoise - PoiseReduction, 0.f, MaxPoise);
-        
-			// Enter stagger or groggy state based on remaining Limit Poise
+
+            // Enter stagger or groggy state based on remaining Limit Poise
             if (LimitPoise <= MaxPoise * PoiseThreshold)
             {
                 EnterGroggy();
@@ -157,7 +173,7 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
             }
         }
     }
-    
+
     return ActualDamage;
 }
 

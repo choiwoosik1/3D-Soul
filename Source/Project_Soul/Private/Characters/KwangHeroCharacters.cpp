@@ -208,6 +208,14 @@ void AKwangHeroCharacters::Input_AbilityInputReleased(FGameplayTag InInputTag)
 
 float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
+	// 만약 현재 구르고 있어서 bIsInvincible이 true라면?
+	if (bIsInvincible)
+	{
+		// 데미지를 0으로 만들고 함수를 즉시 종료합니다. (피가 안 깎임!)
+		// 원한다면 여기에 "챙!" 하는 가드 이펙트나 소리를 넣을 수도 있습니다.
+		return 0.0f;
+	}
+
 	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
 	if (ActualDamage > 0.f)
@@ -267,6 +275,11 @@ float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& D
 	}
 
 	return ActualDamage;
+}
+
+void AKwangHeroCharacters::SetInvincible(bool bInvincible)
+{
+	bIsInvincible = bInvincible;
 }
 
 bool AKwangHeroCharacters::IsBlocking() const

@@ -65,7 +65,7 @@ FActiveGameplayEffectHandle UKwangGameplayAbility::NativeApplyEffectSpecHandleTo
 
 	if (!TargetASC)
 	{
-		UE_LOG(LogTemp, Error, TEXT("TargetASC is NULL! TargetActor: %s"), TargetActor ? *TargetActor->GetName() : TEXT("NULL"));
+		// UE_LOG(LogTemp, Error, TEXT("TargetASC is NULL! TargetActor: %s"), TargetActor ? *TargetActor->GetName() : TEXT("NULL"));
 		return FActiveGameplayEffectHandle();
 	}
 	if (!InSpecHandle.IsValid() || !InSpecHandle.Data.IsValid())

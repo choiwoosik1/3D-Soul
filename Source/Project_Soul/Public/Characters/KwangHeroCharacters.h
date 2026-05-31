@@ -107,4 +107,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Combat")
 	TSubclassOf<UGameplayEffect> DamageEffectClass;
 
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	void SetInvincible(bool bInvincible);
+
+private:
+	// 현재 무적 상태인지 기억하는 변수 (기본값은 false)
+	bool bIsInvincible = false;
 };

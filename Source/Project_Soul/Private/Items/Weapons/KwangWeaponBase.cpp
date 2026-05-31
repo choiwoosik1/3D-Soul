@@ -49,7 +49,7 @@ void AKwangWeaponBase::OnCollisionBoxBeginOverlap(UPrimitiveComponent* Overlappe
 	{
 		if (WeaponOwingPawn != HitPawn)
 		{
-			Debug::Print(GetName() + TEXT("begin overlap with") + HitPawn->GetName(), FColor::Green);
+			/*Debug::Print(GetName() + TEXT("begin overlap with") + HitPawn->GetName(), FColor::Green);*/
 		}
 	}
 }
@@ -64,7 +64,7 @@ void AKwangWeaponBase::OnCollisionBoxEndOverlap(UPrimitiveComponent* OverlappedC
 	{
 		if (WeaponOwingPawn != HitPawn)
 		{
-			Debug::Print(GetName() + TEXT("end overlap with") + HitPawn->GetName(), FColor::Red);
+			/*Debug::Print(GetName() + TEXT("end overlap with") + HitPawn->GetName(), FColor::Red);*/
 		}
 	}
 }
@@ -115,7 +115,7 @@ void AKwangWeaponBase::ExecuteHitTrace()
 		GetWorld(), Start, End, 30.0f,
 		UEngineTypes::ConvertToTraceType(ECC_Pawn),
 		false, ActorsToIgnore,
-		EDrawDebugTrace::ForDuration,  // ← 변경
+		EDrawDebugTrace::None,  // ← 변경
 		OutHits, true,
 		FLinearColor::Red,   // 히트 안됐을 때 색
 		FLinearColor::Green, // 히트 됐을 때 색

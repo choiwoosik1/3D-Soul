@@ -108,7 +108,7 @@ void UHeroGameplayAbility_TargetLock::GetAvaillableActorsToLock()
 			{
 				AvailableActorsToLock.AddUnique(HitActor);
 
-				Debug::Print(HitActor->GetActorNameOrLabel());
+				/*Debug::Print(HitActor->GetActorNameOrLabel());*/
 			}
 		}
 	}
