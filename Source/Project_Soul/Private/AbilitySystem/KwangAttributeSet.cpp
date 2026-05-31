@@ -8,6 +8,8 @@
 #include "Interfaces/PawnUIInterface.h"
 #include "Components/UI/PawnUIComponent.h"
 #include "Components/UI/HeroUIComponent.h"
+#include "Characters/KwangHeroCharacters.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 #include "KwangDebugHelper.h"
 
@@ -78,6 +80,18 @@ void UKwangAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 		if (GetCurrentHealth() == 0.f)
 		{
 			UKwangFunctionLibrary::AddGameplayTagToActorIfNone(Data.Target.GetAvatarActor(), KwangGameplayTags::Shared_Status_Dead);
+
+			if (AKwangHeroCharacters* Hero = Cast<AKwangHeroCharacters>(Data.Target.GetAvatarActor()))
+			{
+				if (Hero->DeathMontage)
+				{
+					Hero->PlayAnimMontage(Hero->DeathMontage);
+				}
+				// 이동 막기
+				Hero->GetCharacterMovement()->DisableMovement();
+				// 입력 막기
+				Hero->DisableInput(nullptr);
+			}
 		}
 	}
 }

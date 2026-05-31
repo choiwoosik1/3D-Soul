@@ -29,6 +29,15 @@ void UKwangHeroAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
 		return; // 없으면 여기서 중단하고 다음 프레임에 다시 시도함
 	}
 
+	// 사망 상태면 업데이트 중단
+	if (UAbilitySystemComponent* ASC = OwningHeroCharacter->GetAbilitySystemComponent())
+	{
+		if (ASC->HasMatchingGameplayTag(KwangGameplayTags::Shared_Status_Dead))
+		{
+			return;
+		}
+	}
+
 	UAbilitySystemComponent* ASC = OwningHeroCharacter->GetAbilitySystemComponent();
 
 	bool bIsAttacking = false;

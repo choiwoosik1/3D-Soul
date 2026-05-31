@@ -208,6 +208,9 @@ void AKwangHeroCharacters::Input_AbilityInputReleased(FGameplayTag InInputTag)
 
 float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
+	if (UKwangFunctionLibrary::NativeDoesActorHaveTag(this, KwangGameplayTags::Shared_Status_Dead))
+		return 0.f;
+
 	// 만약 현재 구르고 있어서 bIsInvincible이 true라면?
 	if (bIsInvincible)
 	{
@@ -265,6 +268,16 @@ float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& D
 			UAbilitySystemBlueprintLibrary::AssignTagSetByCallerMagnitude(
 				SpecHandle, KwangGameplayTags::Shared_SetByCaller_BaseDamage, ActualDamage);
 			ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		}
+
+		// 여기에 추가
+		if (UKwangFunctionLibrary::NativeDoesActorHaveTag(this, KwangGameplayTags::Shared_Status_Dead))
+		{
+			if (DeathMontage)
+			{
+				PlayAnimMontage(DeathMontage);
+			}
+			return ActualDamage;
 		}
 
 		FGameplayEventData EventData;

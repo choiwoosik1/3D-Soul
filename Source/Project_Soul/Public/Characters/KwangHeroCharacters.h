@@ -110,7 +110,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void SetInvincible(bool bInvincible);
 
+	UPROPERTY(EditDefaultsOnly, Category = "Combat")
+	UAnimMontage* DeathMontage;
+
 private:
-	// 현재 무적 상태인지 기억하는 변수 (기본값은 false)
 	bool bIsInvincible = false;
 };
