@@ -14,6 +14,7 @@ ANormalEnemy_Stage1_Baekje::ANormalEnemy_Stage1_Baekje()
 	WeaponHitbox->SetCollisionObjectType(ECC_WorldDynamic);
 	WeaponHitbox->SetCollisionResponseToAllChannels(ECR_Ignore);
 	WeaponHitbox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 // Called when the game starts or when spawned

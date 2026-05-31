@@ -18,6 +18,7 @@ AEnemy_Boss_Stage1::AEnemy_Boss_Stage1()
 	WeaponHitbox->SetCollisionObjectType(ECC_WorldDynamic);
 	WeaponHitbox->SetCollisionResponseToAllChannels(ECR_Ignore);
 	WeaponHitbox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 void AEnemy_Boss_Stage1::BeginPlay()
