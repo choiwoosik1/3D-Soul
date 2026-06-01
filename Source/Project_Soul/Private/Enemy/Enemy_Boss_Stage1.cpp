@@ -18,7 +18,6 @@ AEnemy_Boss_Stage1::AEnemy_Boss_Stage1()
 	WeaponHitbox->SetCollisionObjectType(ECC_WorldDynamic);
 	WeaponHitbox->SetCollisionResponseToAllChannels(ECR_Ignore);
 	WeaponHitbox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 void AEnemy_Boss_Stage1::BeginPlay()
@@ -31,26 +30,9 @@ void AEnemy_Boss_Stage1::BeginPlay()
 	AIC->GetBlackboardComponent()->SetValueAsFloat(FName("MaxCombatRange"), MaxCombatRange);
 
 	WeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &AEnemy_Boss_Stage1::OnWeaponHitboxOverlap);
+	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	GetWorldTimerManager().SetTimer(UpdateSpeedTimerHandle, this, &AEnemy_Boss_Stage1::UpdateSpeed, 0.1f, true);
-}
-
-void AEnemy_Boss_Stage1::StartBossFight()
-{
-	AAIController* AIC = Cast<AAIController>(GetController());
-	if (!AIC) return;
-
-	APawn* Player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
-	if (!Player) return;
-
-	AIC->SetFocus(Player);
-
-	if (UBlackboardComponent* BBComp = AIC->GetBlackboardComponent())
-	{
-		BBComp->SetValueAsObject(FName("TargetActor"), Player);
-	}
-
-	EnterCombat();
 }
 
 // Base decision logic for enemy's next action
@@ -94,6 +76,24 @@ void AEnemy_Boss_Stage1::UpdateSpeed()
 	SetSpeedByDistance(Distance);
 
 	Cast<AAIController>(GetController())->GetBlackboardComponent()->SetValueAsFloat(FName("DistanceToTarget"), Distance);
+}
+
+void AEnemy_Boss_Stage1::ResumeCombat()
+{
+	Super::ResumeCombat();
+
+	AAIController* AIC = Cast<AAIController>(GetController());
+	if (!AIC) return;
+
+	APawn* Player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	if (!Player) return;
+
+	AIC->SetFocus(Player);
+
+	if (UBlackboardComponent* BBComp = AIC->GetBlackboardComponent())
+	{
+		BBComp->SetValueAsObject(FName("TargetActor"), Player);
+	}
 }
 
 // Enable the weapon hitbox for collision detection during attack animations

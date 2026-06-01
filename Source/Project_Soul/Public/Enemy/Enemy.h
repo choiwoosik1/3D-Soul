@@ -179,7 +179,10 @@ public:
 	void EnterAlert();
 
 	UFUNCTION(BlueprintCallable)
-	void EnterCombat();
+	virtual void EnterCombat();
+
+	UFUNCTION(BlueprintCallable)
+	virtual void ResumeCombat();
 
 	void EnterStagger();
 

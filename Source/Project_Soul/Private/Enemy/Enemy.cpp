@@ -354,6 +354,12 @@ void AEnemy::EnterCombat()
     }
 }
 
+// Returnt to combat state from stagger or groggy state
+void AEnemy::ResumeCombat()
+{
+    SetCharacterState(EEnemyState::InCombat);
+}
+
 // Handle entering stagger state, playing animation
 void AEnemy::EnterStagger()
 {
@@ -371,7 +377,7 @@ void AEnemy::ExitStagger()
     if (CharacterState != EEnemyState::Stagger) return;
 
     CurrentPoise = LimitPoise;
-    SetCharacterState(EEnemyState::InCombat);
+    ResumeCombat();
 }
 
 // Handle entering groggy state, playing animation and providing player opportunity
@@ -392,7 +398,7 @@ void AEnemy::ExitGroggy()
 
     LimitPoise = MaxPoise;
     CurrentPoise = LimitPoise;
-    SetCharacterState(EEnemyState::InCombat);
+    ResumeCombat();
 }
 
 void AEnemy::GetBackstabbed(AActor* Attacker)
