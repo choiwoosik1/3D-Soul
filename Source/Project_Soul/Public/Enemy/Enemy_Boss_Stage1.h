@@ -23,12 +23,11 @@ protected:
 
 	virtual void BeginPlay() override;
 
-	UFUNCTION(BlueprintCallable)
-	void StartBossFight();
-
 	virtual void DecideNextAction() override;
 
 	void UpdateSpeed();
+
+	virtual void ResumeCombat() override;
 
 	virtual void EnableWeaponHitbox() override;
 

@@ -22,7 +22,9 @@ ANormalEnemy_Stage1_Goguryeo::ANormalEnemy_Stage1_Goguryeo()
 void ANormalEnemy_Stage1_Goguryeo::BeginPlay()
 {
     Super::BeginPlay();
+
     WeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Goguryeo::OnWeaponHitboxOverlap);
+	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 // Base decision logic for enemy's next action
