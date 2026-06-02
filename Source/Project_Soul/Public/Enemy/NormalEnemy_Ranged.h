@@ -12,6 +12,7 @@ class PROJECT_SOUL_API ANormalEnemy_Ranged : public ANormalEnemy
 public: ANormalEnemy_Ranged();
 
 protected:
+	// Projectile properties
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	TSubclassOf<AActor> ProjectileClass;
 

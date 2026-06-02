@@ -41,10 +41,15 @@ protected:
 public:
 	// Getters for stats and state
 	class UBehaviorTree* GetBehaviorTreeAsset() const { return BTAsset; }
+
 	APatrolPath* GetPatrolPath() const { return PatrolPath; }
+
 	float GetSightRadius() const { return SightRadius; }
+
 	float GetLoseSightRadius() const { return LoseSightRadius; }
+
 	float GetFOVAngle() const { return FOVAngle; }
+
 	float GetHearingRange() const { return HearingRange; }
 
 	FVector GetNextPatrolPoint();

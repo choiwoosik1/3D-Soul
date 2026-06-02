@@ -52,6 +52,7 @@ struct FAttackPattern
     float AttackRange = 200.f;
 };
 
+// Structure to record player's dodge information for AI decision making
 USTRUCT(BlueprintType)
 struct FDodgeRecord
 {
@@ -88,27 +89,34 @@ struct FPlayerActionRecord
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     float DistanceToEnemy;
 
+	// Set the melee attack direction based on the enemy's forward vector
+	// Or set the predicted ranged attack location based on the player's movement 
     void SetAttackDirection(FVector Dir)
     {
         DodgeRecord.AttackDir = Dir;
     }
 
+	// Get the attack direction saved in the beginning of the attack
     FVector GetAttackDirection()
     {
         return DodgeRecord.AttackDir;
     }
 
+	// Get the inverse rotation matrix of the attack direction
+    // Used to transform player dodge direction into enemy's attack-relative space
     FMatrix GetAttackTransform()
     {
         return FRotationMatrix(DodgeRecord.AttackDir.Rotation()).Inverse();
     }
 
+	// Record the player's dodge direction
     void RecordDodge(FVector DodgeDir)
     {
         DodgeRecord.LastDodgeDirection = DodgeDir;
         DodgeRecord.AccumulatedOffset = FMath::Lerp(DodgeRecord.AccumulatedOffset, DodgeDir, 0.5f);
     }
 
+	// Get the accumulated dodge offset, used for adjusting enemy attack movement
     FVector GetCorrectedOffset()
     {
         return DodgeRecord.AccumulatedOffset;

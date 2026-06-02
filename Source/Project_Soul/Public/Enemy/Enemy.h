@@ -132,6 +132,10 @@ public:
 
 	float GetMaxHealth() const { return MaxHealth; }
 
+	float GetMinCombatRange() const { return MinCombatRange; }
+
+	float GetMaxCombatRange() const { return MaxCombatRange; }
+
 	bool CanBeBackstabbed() const { return bAllowBackstab; }
 
 	bool CanBeCriticalHit() const { return CharacterState == EEnemyState::Groggy; }
@@ -162,6 +166,7 @@ public:
 	UFUNCTION()
 	void OnWeaponHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, 
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
 	UFUNCTION(BlueprintCallable)
 	void EnableAttackRotation();
 

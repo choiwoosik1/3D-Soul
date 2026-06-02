@@ -5,11 +5,13 @@
 #include "Components/BoxComponent.h"
 #include "Delegates/Delegate.h"
 
+// Sets default values
 AEnemy_Boss_Stage1::AEnemy_Boss_Stage1()
 {
 	AIControllerClass = AAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
+	// Create and attach the weapon mesh to the character's hand socket
 	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
 	WeaponMesh->SetupAttachment(GetMesh(), FName("HandGrip_R"));
 
@@ -20,19 +22,37 @@ AEnemy_Boss_Stage1::AEnemy_Boss_Stage1()
 	WeaponHitbox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 }
 
+// Called when the game starts or when spawned
 void AEnemy_Boss_Stage1::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Initialize the behavior tree and update combat range values in the blackboard
 	AAIController* AIC = Cast<AAIController>(GetController());
 	AIC->RunBehaviorTree(BTAsset);
 	AIC->GetBlackboardComponent()->SetValueAsFloat(FName("MinCombatRange"), MinCombatRange);
 	AIC->GetBlackboardComponent()->SetValueAsFloat(FName("MaxCombatRange"), MaxCombatRange);
 
+	// Bind the weapon hitbox overlap event and disable it initially to prevent unintended collisions
 	WeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &AEnemy_Boss_Stage1::OnWeaponHitboxOverlap);
 	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	GetWorldTimerManager().SetTimer(UpdateSpeedTimerHandle, this, &AEnemy_Boss_Stage1::UpdateSpeed, 0.1f, true);
+	// Start a timer to continuously update the boss's movement speed based on the player's distance
+	GetWorldTimerManager().SetTimer(UpdateDistanceTimerHandle, this, &AEnemy_Boss_Stage1::UpdateDistance, 0.1f, true);
+}
+
+// Update the boss's movement speed based on the distance to the player and update the blackboard
+void AEnemy_Boss_Stage1::UpdateDistance()
+{
+	if (CharacterState != EEnemyState::InCombat) return;
+
+	APawn* Player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	if (!Player) return;
+
+	float Distance = FVector::Dist(GetActorLocation(), Player->GetActorLocation());
+
+	SetSpeedByDistance(Distance);
+	Cast<AAIController>(GetController())->GetBlackboardComponent()->SetValueAsFloat(FName("DistanceToTarget"), Distance);
 }
 
 // Base decision logic for enemy's next action
@@ -65,28 +85,14 @@ void AEnemy_Boss_Stage1::DecideNextAction()
 	}
 }
 
-void AEnemy_Boss_Stage1::UpdateSpeed()
-{
-	if (CharacterState != EEnemyState::InCombat) return;
-
-	APawn* Player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
-	if (!Player) return;
-
-	float Distance = FVector::Dist(GetActorLocation(), Player->GetActorLocation());
-	SetSpeedByDistance(Distance);
-
-	Cast<AAIController>(GetController())->GetBlackboardComponent()->SetValueAsFloat(FName("DistanceToTarget"), Distance);
-}
-
+// Handle resuming to combat state, refocusing on the player and updates the blackboard
 void AEnemy_Boss_Stage1::ResumeCombat()
 {
 	Super::ResumeCombat();
 
 	AAIController* AIC = Cast<AAIController>(GetController());
-	if (!AIC) return;
-
 	APawn* Player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
-	if (!Player) return;
+	if (!AIC || !Player) return;
 
 	AIC->SetFocus(Player);
 
@@ -110,10 +116,12 @@ void AEnemy_Boss_Stage1::DisableWeaponHitbox()
 	Super::DisableWeaponHitbox();
 
 	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 	AlreadyHitActors.Empty();
 	AttackIdx++;
 }
 
+// Detach the weapon mesh and enable physics simulation on it when the boss dies to create a more dramatic death effect
 void AEnemy_Boss_Stage1::Die()
 {
 	Super::Die();

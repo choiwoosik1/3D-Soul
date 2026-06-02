@@ -8,6 +8,7 @@
 // Sets default values
 ANormalEnemy_Stage1_Goguryeo::ANormalEnemy_Stage1_Goguryeo()
 {
+	// Create and attach the weapon mesh to the character's hand socket
     WeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponMesh"));
     WeaponMesh->SetupAttachment(GetMesh(), FName("HandGrip_L"));
 
@@ -40,7 +41,7 @@ void ANormalEnemy_Stage1_Goguryeo::DecideNextAction()
 
 	float Distance = FVector::Dist(GetActorLocation(), Target->GetActorLocation());
 
-	// If the target is within the closest attack pattern's range, perform that attack immediately
+	// If the target is within the melee attack pattern's range, perform that attack immediately
 	if (Distance <= Patterns[1].AttackRange)
 	{
 		PerformAttackPattern(1);
@@ -67,13 +68,18 @@ void ANormalEnemy_Stage1_Goguryeo::DecideNextAction()
 // Enable the weapon hitbox for collision detection during attack animations
 void ANormalEnemy_Stage1_Goguryeo::EnableWeaponHitbox()
 {
+	Super::EnableWeaponHitbox();
+
 	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 }
 
 // Disable the weapon hitbox to prevent unintended collisions outside of attack animations
 void ANormalEnemy_Stage1_Goguryeo::DisableWeaponHitbox()
 {
+	Super::DisableWeaponHitbox();
+
 	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 	AlreadyHitActors.Empty();
 	AttackIdx++;
 }
@@ -96,35 +102,43 @@ void ANormalEnemy_Stage1_Goguryeo::FireProjectile_Implementation()
 		float TimeToTarget = Distance / ProjectileSpeed;
 		FVector PredictedLocation = TargetLocation + TargetVelocity * TimeToTarget / 1.7f;
 
+		DrawDebugSphere(GetWorld(), TargetLocation, 20.f, 12, FColor::Blue, false, 3.f);
+		DrawDebugSphere(GetWorld(), PredictedLocation, 20.f, 12, FColor::Yellow, false, 3.f);
+
 		// Record attack location
 		PlayerActionRecord.SetAttackDirection(PredictedLocation);
 
 		// Add player dodge prediction
-		PredictedLocation += GetActorTransform().TransformVector(PlayerActionRecord.GetCorrectedOffset());
+		PredictedLocation += GetActorTransform().TransformVectorNoScale(PlayerActionRecord.GetCorrectedOffset());
+
+		DrawDebugSphere(GetWorld(), PredictedLocation, 20.f, 12, FColor::Green, false, 3.f);
 		
 		FireRotation = (PredictedLocation - MuzzleLocation).Rotation();
 	}
 
+	// Spawn the projectile with the calculated rotation and set its velocity
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
 	SpawnParams.Instigator = this;
-	
+
 	AActor* Projectile = GetWorld()->SpawnActor<AActor>(ProjectileClass, MuzzleLocation, FireRotation, SpawnParams);
 	
+	// Set projectile damage and activate its movement component to propel it forward
 	if (Projectile)
 	{
+		float multiplier = Patterns[PatternIdx].Attacks[AttackIdx++].DamageMultiplier;
+		Cast<AProjectile>(Projectile)->SetDamage(BaseDamage* multiplier);
+
 		UProjectileMovementComponent* ProjectileMovement = Projectile->FindComponentByClass<UProjectileMovementComponent>();
 		if (ProjectileMovement)
 		{
 			ProjectileMovement->SetVelocityInLocalSpace(FVector::ForwardVector * ProjectileMovement->InitialSpeed);
 			ProjectileMovement->Activate();
 		}
-
-		float multiplier = Patterns[PatternIdx].Attacks[AttackIdx++].DamageMultiplier;
-		Cast<AProjectile>(Projectile)->SetDamage(BaseDamage* multiplier);
 	}
 }
 
+// Handle death logic, detaching the weapon and enabling physics simulation for a more dynamic death effect
 void ANormalEnemy_Stage1_Goguryeo::Die()
 {
 	Super::Die();

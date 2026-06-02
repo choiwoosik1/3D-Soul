@@ -13,6 +13,7 @@ public:
 	ANormalEnemy_Stage1_Baekje();
 
 protected:
+	// Weapon properties
 	UPROPERTY(VisibleAnywhere, Category = "Combat")
 	class USkeletalMeshComponent* WeaponMesh;
 

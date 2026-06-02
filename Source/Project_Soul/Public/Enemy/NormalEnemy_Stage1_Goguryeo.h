@@ -13,6 +13,7 @@ public:
 	ANormalEnemy_Stage1_Goguryeo();
 
 protected:
+	// Weapon properties
 	UPROPERTY(VisibleAnywhere, Category = "Combat")
 	class UStaticMeshComponent* WeaponMesh;
 

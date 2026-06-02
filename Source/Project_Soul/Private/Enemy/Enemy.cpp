@@ -15,25 +15,21 @@ void AEnemy::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Initialize health, poise, character state, movement settings
 	CurrentHealth = MaxHealth;
+
     LimitPoise = MaxPoise;
     CurrentPoise = LimitPoise;
 
 	SetCharacterState(EEnemyState::Idle);
+
     GetCharacterMovement()->MaxAcceleration = 4000.f;
     GetCharacterMovement()->bOrientRotationToMovement = false;
     GetCharacterMovement()->bUseControllerDesiredRotation = true;
     bUseControllerRotationYaw = false;
-
-    AAIController* AIC = Cast<AAIController>(GetController());
-    if (!AIC) return;
-    UBlackboardComponent* BBComp = AIC->GetBlackboardComponent();
-    if (!BBComp) return;
-
-	BBComp->SetValueAsFloat(FName("MinCombatRange"), MinCombatRange);
-	BBComp->SetValueAsFloat(FName("MaxCombatRange"), MaxCombatRange);
 }
 
+// Update the character's state and adjust movement and blackboard values accordingly
 void AEnemy::SetCharacterState(EEnemyState NewState)
 {
     if (CharacterState == NewState) return;
@@ -130,22 +126,12 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
         bCriticalHit = false;
     }
 
-    // [수정된 부분] 체력을 깎기 직전에 현재 체력을 저장해 둡니다.
-    /*float PreviousHealth = CurrentHealth;*/
-
     // Reduce health by the actual damage amount
     CurrentHealth = FMath::Clamp(CurrentHealth - ActualDamage, 0.0f, MaxHealth);
 
-    // [수정된 부분] 글자 깨짐 방지를 위해 영어로 로그를 출력합니다.
-    /*UE_LOG(LogTemp, Warning, TEXT("Hit Enemy: %s | Damage: %f | Health: %f -> %f"),
-        *GetName(), ActualDamage, PreviousHealth, CurrentHealth);
+    // UE_LOG(LogTemp, Warning, TEXT("Hit Enemy: %s | Damage: %f | Health: %f"), *GetName(), ActualDamage, CurrentHealth);
 
-    if (GEngine)
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red,
-            FString::Printf(TEXT("Enemy HP: %f / %f"), CurrentHealth, MaxHealth));
-    }*/
-
+	// Check if health has dropped to zero or below, and if so, trigger the death logic
     if (CurrentHealth <= 0.0f)
     {
         Die();
@@ -177,11 +163,13 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
     return ActualDamage;
 }
 
+// Timer function to start the decision-making process for the enemy in combat state every 0.5 seconds
 void AEnemy::StartDecisionTimer()
 {
     GetWorldTimerManager().SetTimer(DecisionTimerHandle, this, &AEnemy::OnDecisionTimer, 0.5f, false);
 }
 
+// Timer callback function to decide the enemy's next action in combat state
 void AEnemy::OnDecisionTimer()
 {
     if (CharacterState == EEnemyState::InCombat) 
@@ -197,15 +185,17 @@ void AEnemy::DecideNextAction()
     if (CharacterState != EEnemyState::InCombat) return;
 }
 
-// Execute the decided action, ensuring that the enemy is not currently staggered or dead
+// Execute the decided attack pattern
 void AEnemy::PerformAttackPattern(int32 AttackPatternIdx)
 {
     if (CharacterState != EEnemyState::InCombat) return;
     if (!Patterns.IsValidIndex(AttackPatternIdx)) return;
+
     SetCharacterState(EEnemyState::Attack);
     PatternIdx = AttackPatternIdx;
 	AttackIdx = 0;
 
+	// Play the attack montage associated with the selected attack pattern
     UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
     if (AnimInstance && Patterns[PatternIdx].Montage)
     {
@@ -217,19 +207,17 @@ void AEnemy::PerformAttackPattern(int32 AttackPatternIdx)
 void AEnemy::FinishAttackPattern()
 {
     if (CharacterState != EEnemyState::Attack) return;
-    SetCharacterState(EEnemyState::InCombat);
+    ResumeCombat();
 }
 
 // Enable the weapon hitbox for the current attack
 void AEnemy::EnableWeaponHitbox()
 {
-    /*
-    UE_LOG(LogTemp, Warning, TEXT("Pattern: %d / Attack: %d / Damage: %.1f"), PatternIdx, AttackIdx,
-        BaseDamage * Patterns[PatternIdx].Attacks[AttackIdx].DamageMultiplier);
-    */
+    // UE_LOG(LogTemp, Warning, TEXT("Pattern: %d / Attack: %d / Damage: %.1f"), PatternIdx, AttackIdx,
+    //     BaseDamage * Patterns[PatternIdx].Attacks[AttackIdx].DamageMultiplier);
 }
 
-// Disable the weapon hitbox after the attack
+// Disable the weapon hitbox after the attack ends, and record the player's dodge direction if the attack was missed
 void AEnemy::DisableWeaponHitbox()
 {
     // Record player dodge vector if the attack was missed
@@ -238,44 +226,42 @@ void AEnemy::DisableWeaponHitbox()
         AAIController* AIC = Cast<AAIController>(GetController());
         if (AIC && AIC->GetFocusActor())
         {
-            FVector ToPlayer = AIC->GetFocusActor()->GetActorLocation() - GetActorLocation();
-            FVector ToPlayerDir = PlayerActionRecord.GetAttackTransform().TransformVector(ToPlayer);
+            // Vector from enemy to player
+			FVector ToPlayer = AIC->GetFocusActor()->GetActorLocation() - GetActorLocation();
+            // Transform the vector to the attack's local space to determine dodge direction
+			FVector ToPlayerDir = PlayerActionRecord.GetAttackTransform().TransformVector(ToPlayer); 
             PlayerActionRecord.RecordDodge(ToPlayerDir);
         }
     }
 }
 
+// Handle overlap events for the weapon hitbox, applying damage to valid targets
 void AEnemy::OnWeaponHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-    if (!Patterns.IsValidIndex(PatternIdx)) return;
-    FAttackPattern Pattern = Patterns[PatternIdx];
-    
-    if (!Pattern.Attacks.IsValidIndex(AttackIdx)) return;
-    FAttackProperties Attack = Pattern.Attacks[AttackIdx];
+    if (!Patterns.IsValidIndex(PatternIdx) ||!Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
+    const FAttackProperties& Attack = Patterns[PatternIdx].Attacks[AttackIdx];
 
-    if (!OtherActor || OtherActor == this || AlreadyHitActors.Contains(OtherActor) || Cast<AEnemy>(OtherActor)) return;
-
+    if (!OtherActor || Cast<AEnemy>(OtherActor) || AlreadyHitActors.Contains(OtherActor)) return;
     AlreadyHitActors.Add(OtherActor);
 
-    float Multiplier = Attack.DamageMultiplier;
-
-    UGameplayStatics::ApplyDamage(OtherActor, BaseDamage * Multiplier, GetController(), this, nullptr);
+    float Damage = BaseDamage * Attack.DamageMultiplier;
+    UGameplayStatics::ApplyDamage(OtherActor, Damage, GetController(), this, nullptr);
 
     UE_LOG(LogTemp, Warning, TEXT("Hit: %s / Pattern: %d / Attack: %d / Damage: %.1f"),
-        *OtherActor->GetName(), PatternIdx, AttackIdx, BaseDamage * Multiplier);
+        *OtherActor->GetName(), PatternIdx, AttackIdx, Damage);
 }
 
 // Enable rotation during an attack, adjusting rotation speed based on the attack properties
 void AEnemy::EnableAttackRotation()
 {
-    if (!Patterns.IsValidIndex(PatternIdx)) return;
-    if (!Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
+    if (!Patterns.IsValidIndex(PatternIdx) || !Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
     const FAttackProperties& Attack = Patterns[PatternIdx].Attacks[AttackIdx];
 
 	AAIController* AIC = Cast<AAIController>(GetController());
     if (!AIC || !AIC->GetFocusActor()) return;
 
+	// Determine rotation direction based on the position of the target relative to the enemy
     FVector ToTarget = AIC->GetFocusActor()->GetActorLocation() - GetActorLocation();
     float Dot = FVector::DotProduct(GetActorRightVector(), ToTarget.GetSafeNormal());
     float Speed = Dot > 0.f ? Attack.RotationSpeedR : Attack.RotationSpeedL;
@@ -292,8 +278,7 @@ void AEnemy::DisableAttackRotation()
 // Enable movement during an attack, recording forward vector to calculate player dodge direction
 void AEnemy::EnableAttackMovement()
 {
-    if (!Patterns.IsValidIndex(PatternIdx)) return;
-    if (!Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
+    if (!Patterns.IsValidIndex(PatternIdx) || !Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
     const FAttackProperties& Attack = Patterns[PatternIdx].Attacks[AttackIdx];
 
 	if (Attack.MovementSpeed > 0.f)
@@ -302,17 +287,16 @@ void AEnemy::EnableAttackMovement()
         PlayerActionRecord.SetAttackDirection(GetActorForwardVector()); 
 
 		AAIController* AIC = Cast<AAIController>(GetController());
-        if (AIC && AIC->GetFocusActor())
-        {
-            GetCharacterMovement()->MaxWalkSpeed = Attack.MovementSpeed;
+        if (!AIC || !AIC->GetFocusActor()) return;
+        
+        GetCharacterMovement()->MaxWalkSpeed = Attack.MovementSpeed;
 
-            FVector TargetLocation = AIC->GetFocusActor()->GetActorLocation();
+        FVector TargetLocation = AIC->GetFocusActor()->GetActorLocation();
             
-            // Add predicted player dodge location
-            TargetLocation += GetActorTransform().TransformVector(PlayerActionRecord.GetCorrectedOffset());
+        // Add predicted player dodge location
+        TargetLocation += GetActorTransform().TransformVectorNoScale(PlayerActionRecord.GetCorrectedOffset());
 
-            AIC->MoveToLocation(TargetLocation);
-        }
+        AIC->MoveToLocation(TargetLocation);        
     }
 }
 
@@ -326,15 +310,6 @@ void AEnemy::DisableAttackMovement()
 void AEnemy::EnterPatrol()
 {
     SetCharacterState(EEnemyState::Patrol);
-
-    if (UAnimInstance* AnimInst = GetMesh()->GetAnimInstance())
-    {
-        UFunction* CustomEvent = AnimInst->FindFunction(FName("ExitCombat"));
-        if (CustomEvent)
-        {
-            AnimInst->ProcessEvent(CustomEvent, nullptr);
-        }
-    }
 }
 
 // Handle entering alert state, called by EnemyAIController when player is detected
@@ -343,7 +318,7 @@ void AEnemy::EnterAlert()
     SetCharacterState(EEnemyState::Alert);
 }
 
-// Handle entering combat state, called by EnemyAIController when DetectionLevel is high enough
+// Handle entering combat state
 void AEnemy::EnterCombat()
 {
     SetCharacterState(EEnemyState::InCombat);
@@ -354,13 +329,13 @@ void AEnemy::EnterCombat()
     }
 }
 
-// Returnt to combat state from stagger or groggy state
+// Handle resuming combat state after stagger or groggy states
 void AEnemy::ResumeCombat()
 {
     SetCharacterState(EEnemyState::InCombat);
 }
 
-// Handle entering stagger state, playing animation
+// Handle entering stagger state
 void AEnemy::EnterStagger()
 {
     SetCharacterState(EEnemyState::Stagger);
@@ -371,7 +346,7 @@ void AEnemy::EnterStagger()
     }
 }
 
-// Handle exiting stagger state, resetting poise and returning to combat state
+// Handle exiting stagger state, resetting poise
 void AEnemy::ExitStagger()
 {
     if (CharacterState != EEnemyState::Stagger) return;
@@ -380,7 +355,7 @@ void AEnemy::ExitStagger()
     ResumeCombat();
 }
 
-// Handle entering groggy state, playing animation and providing player opportunity
+// Handle entering groggy state, providing player opportunity
 void AEnemy::EnterGroggy()
 {
     SetCharacterState(EEnemyState::Groggy);
@@ -391,7 +366,7 @@ void AEnemy::EnterGroggy()
     }
 }
 
-// Handle exiting groggy state, resetting poise and returning to combat state
+// Handle exiting groggy state, resetting poise
 void AEnemy::ExitGroggy()
 {
     if (CharacterState != EEnemyState::Groggy) return;
@@ -401,6 +376,7 @@ void AEnemy::ExitGroggy()
     ResumeCombat();
 }
 
+// Handle being backstabbed, applying backstab multiplier
 void AEnemy::GetBackstabbed(AActor* Attacker)
 {
     SetCharacterState(EEnemyState::Groggy);
@@ -408,6 +384,7 @@ void AEnemy::GetBackstabbed(AActor* Attacker)
     bBackstabbed = true;
 	AttackInitiator = Attacker;
 
+	// Rotate to face the attacker
     FVector Direction = GetActorLocation() - Attacker->GetActorLocation();
     Direction.Z = 0.f;
 	SetActorRotation(Direction.Rotation());
@@ -418,6 +395,7 @@ void AEnemy::GetBackstabbed(AActor* Attacker)
     }
 }
 
+// Handle being critically hit, applying critical hit multiplier
 void AEnemy::GetCriticalHit(AActor* Attacker)
 {
     SetCharacterState(EEnemyState::Groggy);
@@ -425,6 +403,7 @@ void AEnemy::GetCriticalHit(AActor* Attacker)
 	bCriticalHit = true;
     AttackInitiator = Attacker;
 
+	// Rotate to align with the attacker
 	FVector Direction = Attacker->GetActorLocation() - GetActorLocation();
 	Direction.Z = 0.f;
 	SetActorRotation(Direction.Rotation());
@@ -435,7 +414,7 @@ void AEnemy::GetCriticalHit(AActor* Attacker)
     }
 }
 
-// Handle death, playing animation
+// Handle death
 void AEnemy::Die()
 {
     SetCharacterState(EEnemyState::Dead);

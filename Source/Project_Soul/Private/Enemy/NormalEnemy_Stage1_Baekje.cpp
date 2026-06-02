@@ -6,6 +6,7 @@
 // Sets default values
 ANormalEnemy_Stage1_Baekje::ANormalEnemy_Stage1_Baekje()
 {
+	// Create and attach the weapon mesh to the character's hand socket
 	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
 	WeaponMesh->SetupAttachment(GetMesh(), FName("HandGrip_R"));
 
@@ -69,10 +70,12 @@ void ANormalEnemy_Stage1_Baekje::DisableWeaponHitbox()
 	Super::DisableWeaponHitbox();
 
 	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 	AlreadyHitActors.Empty();
 	AttackIdx++;
 }
 
+// Handle death logic, detaching the weapon and enabling physics simulation for a more dynamic death effect
 void ANormalEnemy_Stage1_Baekje::Die()
 {
 	Super::Die();
