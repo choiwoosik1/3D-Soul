@@ -13,22 +13,12 @@ public:
 	ANormalEnemy_Stage1_Goguryeo();
 
 protected:
-	UPROPERTY(VisibleAnywhere, Category = "Combat")
-	class UStaticMeshComponent* WeaponMesh;
-
-	UPROPERTY(VisibleAnywhere, Category = "Combat")
-	class UBoxComponent* WeaponHitbox;
-
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float ProjectileSpeed = 800.f;
 
-	virtual void BeginPlay() override;
+	virtual void PostInitializeComponents() override;
 
 	virtual void DecideNextAction() override;
-
-	virtual void EnableWeaponHitbox() override;
-
-	virtual void DisableWeaponHitbox() override;
 
 	virtual void FireProjectile_Implementation() override;
 

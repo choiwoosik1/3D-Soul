@@ -7,22 +7,16 @@
 ANormalEnemy_Stage1_Baekje::ANormalEnemy_Stage1_Baekje()
 {
 	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
-	WeaponMesh->SetupAttachment(GetMesh(), FName("HandGrip_R"));
-
-	WeaponHitbox = CreateDefaultSubobject<UBoxComponent>(TEXT("WeaponHitbox"));
-	WeaponHitbox->SetupAttachment(WeaponMesh);
-	WeaponHitbox->SetCollisionObjectType(ECC_WorldDynamic);
-	WeaponHitbox->SetCollisionResponseToAllChannels(ECR_Ignore);
-	WeaponHitbox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 }
 
-// Called when the game starts or when spawned
-void ANormalEnemy_Stage1_Baekje::BeginPlay()
+// Called after the actor's components have been initialized
+void ANormalEnemy_Stage1_Baekje::PostInitializeComponents()
 {
-	Super::BeginPlay();
+	Super::PostInitializeComponents();
 
+	// Attach the weapon mesh to the character's hand socket
+	WeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, WeaponSocketName);
 	WeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Baekje::OnWeaponHitboxOverlap);
-	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 // Base decision logic for enemy's next action
@@ -55,24 +49,7 @@ void ANormalEnemy_Stage1_Baekje::DecideNextAction()
 	}
 }
 
-// Enable the weapon hitbox for collision detection during attack animations
-void ANormalEnemy_Stage1_Baekje::EnableWeaponHitbox()
-{
-	Super::EnableWeaponHitbox();
-
-	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-}
-
-// Disable the weapon hitbox to prevent unintended collisions outside of attack animations
-void ANormalEnemy_Stage1_Baekje::DisableWeaponHitbox()
-{
-	Super::DisableWeaponHitbox();
-
-	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	AlreadyHitActors.Empty();
-	AttackIdx++;
-}
-
+// Handle death logic, detaching the weapon and enabling physics simulation for a more dynamic death effect
 void ANormalEnemy_Stage1_Baekje::Die()
 {
 	Super::Die();
