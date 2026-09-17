@@ -19,6 +19,8 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	FName MuzzleSocketName = FName("muzzle");
 
+	virtual void BeginPlay() override;
+
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void FireProjectile();
 

@@ -7,6 +7,11 @@ ANormalEnemy_Ranged::ANormalEnemy_Ranged()
 	
 }
 
+void ANormalEnemy_Ranged::BeginPlay()
+{
+	Super::BeginPlay();
+}
+
 void ANormalEnemy_Ranged::FireProjectile_Implementation()
 {
 	

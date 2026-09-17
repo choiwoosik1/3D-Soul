@@ -8,24 +8,17 @@
 // Sets default values
 ANormalEnemy_Stage1_Goguryeo::ANormalEnemy_Stage1_Goguryeo()
 {
-	// Create and attach the weapon mesh to the character's hand socket
-    WeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponMesh"));
-    WeaponMesh->SetupAttachment(GetMesh(), FName("HandGrip_L"));
-
-    WeaponHitbox = CreateDefaultSubobject<UBoxComponent>(TEXT("WeaponHitbox"));
-    WeaponHitbox->SetupAttachment(WeaponMesh);
-    WeaponHitbox->SetCollisionObjectType(ECC_WorldDynamic);
-    WeaponHitbox->SetCollisionResponseToAllChannels(ECR_Ignore);
-    WeaponHitbox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	WeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponMesh"));
 }
 
-// Called when the game starts or when spawned
-void ANormalEnemy_Stage1_Goguryeo::BeginPlay()
+// Called after the actor's components have been initialized
+void ANormalEnemy_Stage1_Goguryeo::PostInitializeComponents()
 {
-    Super::BeginPlay();
+	Super::PostInitializeComponents();
 
-    WeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Goguryeo::OnWeaponHitboxOverlap);
-	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	// Attach the weapon mesh to the character's hand socket
+	WeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, WeaponSocketName);
+	WeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Goguryeo::OnWeaponHitboxOverlap);
 }
 
 // Base decision logic for enemy's next action
@@ -63,25 +56,6 @@ void ANormalEnemy_Stage1_Goguryeo::DecideNextAction()
 		PerformAttackPattern(SelectedIdx);
 		return;
 	}
-}
-
-// Enable the weapon hitbox for collision detection during attack animations
-void ANormalEnemy_Stage1_Goguryeo::EnableWeaponHitbox()
-{
-	Super::EnableWeaponHitbox();
-
-	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-}
-
-// Disable the weapon hitbox to prevent unintended collisions outside of attack animations
-void ANormalEnemy_Stage1_Goguryeo::DisableWeaponHitbox()
-{
-	Super::DisableWeaponHitbox();
-
-	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	AlreadyHitActors.Empty();
-	AttackIdx++;
 }
 
 // Fire a projectile towards the target, calculating the lead based on the target's velocity to increase hit accuracy

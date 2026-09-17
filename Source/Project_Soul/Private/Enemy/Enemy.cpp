@@ -8,6 +8,22 @@
 AEnemy::AEnemy()
 {
     PrimaryActorTick.bCanEverTick = false;
+
+    WeaponHitbox = CreateDefaultSubobject<UBoxComponent>(TEXT("WeaponHitbox"));
+}
+
+// Called after the actor's components have been initialized
+void AEnemy::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+    // Attach the weapon hitbox to the character's weapon socket
+    WeaponHitbox->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, WeaponSocketName);
+    WeaponHitbox->SetCollisionObjectType(ECC_WorldDynamic);
+    WeaponHitbox->SetCollisionResponseToAllChannels(ECR_Ignore);
+    WeaponHitbox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+    WeaponHitbox->SetGenerateOverlapEvents(true);
+    WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 // Called when the game starts or when spawned
@@ -129,6 +145,9 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
     // Reduce health by the actual damage amount
     CurrentHealth = FMath::Clamp(CurrentHealth - ActualDamage, 0.0f, MaxHealth);
 
+	// Notify the health bar UI to update based on the new health value
+	NotifyHealthBarUpdate(CurrentHealth, MaxHealth);
+
     // UE_LOG(LogTemp, Warning, TEXT("Hit Enemy: %s | Damage: %f | Health: %f"), *GetName(), ActualDamage, CurrentHealth);
 
 	// Check if health has dropped to zero or below, and if so, trigger the death logic
@@ -215,11 +234,15 @@ void AEnemy::EnableWeaponHitbox()
 {
     // UE_LOG(LogTemp, Warning, TEXT("Pattern: %d / Attack: %d / Damage: %.1f"), PatternIdx, AttackIdx,
     //     BaseDamage * Patterns[PatternIdx].Attacks[AttackIdx].DamageMultiplier);
+
+    WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 }
 
 // Disable the weapon hitbox after the attack ends, and record the player's dodge direction if the attack was missed
 void AEnemy::DisableWeaponHitbox()
 {
+    WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
     // Record player dodge vector if the attack was missed
     if ((AlreadyHitActors.Num() <= 0) && Patterns[PatternIdx].Attacks[AttackIdx].MovementSpeed > 0)
     {
@@ -233,6 +256,9 @@ void AEnemy::DisableWeaponHitbox()
             PlayerActionRecord.RecordDodge(ToPlayerDir);
         }
     }
+
+    AlreadyHitActors.Empty();
+    AttackIdx++;
 }
 
 // Handle overlap events for the weapon hitbox, applying damage to valid targets

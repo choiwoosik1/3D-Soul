@@ -13,14 +13,9 @@ public:
 	AEnemy_Boss_Stage1();
 
 protected:
-	// Weapon properties
-	UPROPERTY(VisibleAnywhere, Category = "Combat")
-	class USkeletalMeshComponent* WeaponMesh;
-
-	UPROPERTY(VisibleAnywhere, Category = "Combat")
-	class UBoxComponent* WeaponHitbox;
-
 	FTimerHandle UpdateDistanceTimerHandle;
+
+	virtual void PostInitializeComponents() override;
 
 	virtual void BeginPlay() override;
 
@@ -29,10 +24,6 @@ protected:
 	virtual void DecideNextAction() override;
 
 	virtual void ResumeCombat() override;
-
-	virtual void EnableWeaponHitbox() override;
-
-	virtual void DisableWeaponHitbox() override;
 
 	virtual void Die() override;
 };

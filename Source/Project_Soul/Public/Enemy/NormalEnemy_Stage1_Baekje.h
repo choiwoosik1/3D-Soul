@@ -13,20 +13,9 @@ public:
 	ANormalEnemy_Stage1_Baekje();
 
 protected:
-	// Weapon properties
-	UPROPERTY(VisibleAnywhere, Category = "Combat")
-	class USkeletalMeshComponent* WeaponMesh;
-
-	UPROPERTY(VisibleAnywhere, Category = "Combat")
-	class UBoxComponent* WeaponHitbox;
-
-	virtual void BeginPlay() override;
+	virtual void PostInitializeComponents() override;
 
 	virtual void DecideNextAction() override;
-
-	virtual void EnableWeaponHitbox() override;
-
-	virtual void DisableWeaponHitbox() override;
 
 	virtual void Die() override;
 };

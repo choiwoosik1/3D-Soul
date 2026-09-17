@@ -17,6 +17,15 @@ enum class EEnemyState : uint8
     Dead
 };
 
+// Enumeration for guard responses, used to determine how the player reacts to enemy attacks
+UENUM(BlueprintType)
+enum class EGuardResponse : uint8
+{
+    Block,       // Guard negates damage, consumes partial stamina
+    GuardBreak,  // Guard negates damage but stamina drops to 0 and guard breaks
+	Ignore       // Guard does not block the attack, player takes full damage
+};
+
 // Structure to define properties of an individual attack
 USTRUCT(BlueprintType)
 struct FAttackProperties
@@ -34,6 +43,9 @@ struct FAttackProperties
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float MovementSpeed = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EGuardResponse GuardResponse = EGuardResponse::Block;
 };
 
 // Structure to define an attack pattern, including animation montage and attack properties
