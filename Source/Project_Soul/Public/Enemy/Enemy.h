@@ -35,7 +35,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float BackstabMultiplier = 2.5f;
 	
-	UPROPERTY(EditAnywhere, Category = "Combat")
+	UPROPERTY(VisibleAnywhere, Category = "Combat")
 	bool bCanBeParried = false;
 
 	UPROPERTY(VisibleAnywhere, Category = "Combat")
@@ -129,6 +129,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Animation")
 	UAnimMontage* CriticalHitMontage = nullptr;
+	
+	UPROPERTY(EditAnywhere, Category = "Animation")
+	UAnimMontage* ParriedMontage = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Animation")
 	UAnimMontage* DeathMontage = nullptr;
@@ -138,6 +141,8 @@ protected:
 	virtual void BeginPlay() override;
 
 	void SetCharacterState(EEnemyState NewState);
+
+	void InterruptCurrentAttack();
 
 	virtual void NotifyHealthBarUpdate(float NewCurrentHealth, float NewMaxHealth) {}
 
@@ -157,6 +162,8 @@ public:
 	bool CanBeBackstabbed() const { return bAllowBackstab; }
 
 	bool CanBeCriticalHit() const { return CharacterState == EEnemyState::Groggy; }
+
+	bool CanBeParried() const { return bCanBeParried; }
 
 	virtual void SetSpeedByDistance(float Distance);
 
@@ -197,6 +204,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void DisableAttackMovement();
 
+	UFUNCTION(BlueprintCallable)
+	void SetParryable(bool bIsParryable) { bCanBeParried = bIsParryable; }
+
 	void EnterPatrol();
 
 	void EnterAlert();
@@ -220,6 +230,8 @@ public:
 	void GetBackstabbed(AActor* Attacker);
 
 	void GetCriticalHit(AActor* Attacker);
+
+	void GetParried(AActor* Attacker);
 
     virtual void Die();
 

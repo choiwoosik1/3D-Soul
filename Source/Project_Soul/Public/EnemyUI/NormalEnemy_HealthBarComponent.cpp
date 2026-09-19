@@ -29,7 +29,7 @@ void UNormalEnemy_HealthBarComponent::UpdateHealth(float NewCurrentHealth, float
 
 		if (Percent <= 0.f)
 		{
-			isDead = true;
+			bIsDead = true;
 		}
 	}
 
@@ -63,7 +63,7 @@ void UNormalEnemy_HealthBarComponent::RestartAutoHideTimer()
 
 	}
 
-	if (isDead)
+	if (bIsDead)
 	{
 		GetWorld()->GetTimerManager().SetTimer(AutoHideTimerHandle, this,
 			&UNormalEnemy_HealthBarComponent::OnAutoHideTimerExpired, DeathHideDelay, false);

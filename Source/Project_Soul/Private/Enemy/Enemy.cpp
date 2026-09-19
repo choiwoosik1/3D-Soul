@@ -1,6 +1,7 @@
 #include "Enemy/Enemy.h"
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "Enemy/EnemyDamageTypes.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -87,6 +88,13 @@ void AEnemy::SetCharacterState(EEnemyState NewState)
             BBComp->ClearValue(FName("Destination"));
             break;
     }
+}
+
+// Interrupt the current attack, disable the weapon hitbox, and prevent parrying
+void AEnemy::InterruptCurrentAttack()
+{
+    DisableWeaponHitbox();
+    bCanBeParried = false;
 }
 
 // Adjust the character's movement speed in combat state based on the distance to the target
@@ -241,6 +249,8 @@ void AEnemy::EnableWeaponHitbox()
 // Disable the weapon hitbox after the attack ends, and record the player's dodge direction if the attack was missed
 void AEnemy::DisableWeaponHitbox()
 {
+    if (WeaponHitbox->GetCollisionEnabled() == ECollisionEnabled::NoCollision) return;
+
     WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
     // Record player dodge vector if the attack was missed
@@ -272,10 +282,26 @@ void AEnemy::OnWeaponHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActor* 
     AlreadyHitActors.Add(OtherActor);
 
     float Damage = BaseDamage * Attack.DamageMultiplier;
-    UGameplayStatics::ApplyDamage(OtherActor, Damage, GetController(), this, nullptr);
+    TSubclassOf<UDamageType> GuardResponseType;
 
-    UE_LOG(LogTemp, Warning, TEXT("Hit: %s / Pattern: %d / Attack: %d / Damage: %.1f"),
-        *OtherActor->GetName(), PatternIdx, AttackIdx, Damage);
+	// Determine the guard response type based on the attack's guard response property
+    switch (Attack.GuardResponse)
+    {
+	case EGuardResponse::Block: 
+		GuardResponseType = UDamageType_Block::StaticClass();
+        break;
+    case EGuardResponse::GuardBreak: 
+		GuardResponseType = UDamageType_GuardBreak::StaticClass();
+		break;
+	case EGuardResponse::Ignore:
+		GuardResponseType = UDamageType_Ignore::StaticClass();
+		break;
+    }
+
+    UGameplayStatics::ApplyDamage(OtherActor, Damage, GetController(), this, GuardResponseType);
+
+    UE_LOG(LogTemp, Warning, TEXT("Hit: %s / Pattern: %d / Attack: %d / Damage: %.1f / Guard Response: %s"),
+        *OtherActor->GetName(), PatternIdx, AttackIdx, Damage, *GuardResponseType->GetName());
 }
 
 // Enable rotation during an attack, adjusting rotation speed based on the attack properties
@@ -365,6 +391,7 @@ void AEnemy::ResumeCombat()
 void AEnemy::EnterStagger()
 {
     SetCharacterState(EEnemyState::Stagger);
+    InterruptCurrentAttack();
 
     if (StaggerMontage)
     {
@@ -385,6 +412,7 @@ void AEnemy::ExitStagger()
 void AEnemy::EnterGroggy()
 {
     SetCharacterState(EEnemyState::Groggy);
+    InterruptCurrentAttack();
 
     if (GroggyMontage)
     {
@@ -440,10 +468,29 @@ void AEnemy::GetCriticalHit(AActor* Attacker)
     }
 }
 
+// Handle being parried, entering groggy state and resetting poise
+void AEnemy::GetParried(AActor* Attacker)
+{
+	SetCharacterState(EEnemyState::Groggy);
+	CurrentPoise = 0.f;
+	AttackInitiator = Attacker;
+	
+    // Rotate to align with the attacker
+	FVector Direction = Attacker->GetActorLocation() - GetActorLocation();
+	Direction.Z = 0.f;
+	SetActorRotation(Direction.Rotation());
+	
+    if (ParriedMontage)
+	{
+		PlayAnimMontage(ParriedMontage);
+	}
+}
+
 // Handle death
 void AEnemy::Die()
 {
     SetCharacterState(EEnemyState::Dead);
+    InterruptCurrentAttack();
 
     if (DeathMontage)
     {

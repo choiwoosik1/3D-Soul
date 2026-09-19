@@ -27,8 +27,8 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "HealthBar")
 	float DeathHideDelay = 3.0f;
 
-	UPROPERTY(EditAnywhere, Category = "HealthBar")
-	bool isDead = false;
+	UPROPERTY(VisibleAnywhere, Category = "HealthBar")
+	bool bIsDead = false;
 
 private:
 	void RestartAutoHideTimer();
