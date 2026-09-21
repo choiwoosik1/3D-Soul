@@ -5,34 +5,54 @@
 #include "Components/BoxComponent.h"
 #include "Delegates/Delegate.h"
 
+// Sets default values
 AEnemy_Boss_Stage1::AEnemy_Boss_Stage1()
 {
 	AIControllerClass = AAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
 	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
-	WeaponMesh->SetupAttachment(GetMesh(), FName("HandGrip_R"));
-
-	WeaponHitbox = CreateDefaultSubobject<UBoxComponent>(TEXT("WeaponHitbox"));
-	WeaponHitbox->SetupAttachment(WeaponMesh);
-	WeaponHitbox->SetCollisionObjectType(ECC_WorldDynamic);
-	WeaponHitbox->SetCollisionResponseToAllChannels(ECR_Ignore);
-	WeaponHitbox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 }
 
+// Called after the actor's components have been initialized
+void AEnemy_Boss_Stage1::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	// Attach the weapon mesh to the character's hand socket
+	WeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, WeaponSocketName);
+
+	// Bind the weapon hitbox overlap event and disable it initially to prevent unintended collisions
+	WeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &AEnemy_Boss_Stage1::OnWeaponHitboxOverlap);
+}
+
+// Called when the game starts or when spawned
 void AEnemy_Boss_Stage1::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Initialize the behavior tree and update combat range values in the blackboard
 	AAIController* AIC = Cast<AAIController>(GetController());
 	AIC->RunBehaviorTree(BTAsset);
 	AIC->GetBlackboardComponent()->SetValueAsFloat(FName("MinCombatRange"), MinCombatRange);
 	AIC->GetBlackboardComponent()->SetValueAsFloat(FName("MaxCombatRange"), MaxCombatRange);
+	
+	// Start a timer to continuously update the boss's movement speed based on the player's distance
+	GetWorldTimerManager().SetTimer(UpdateDistanceTimerHandle, this, &AEnemy_Boss_Stage1::UpdateDistance, 0.1f, true);
+}
 
-	WeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &AEnemy_Boss_Stage1::OnWeaponHitboxOverlap);
-	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+// Update the boss's movement speed based on the distance to the player and update the blackboard
+void AEnemy_Boss_Stage1::UpdateDistance()
+{
+	if (CharacterState != EEnemyState::InCombat) return;
 
-	GetWorldTimerManager().SetTimer(UpdateSpeedTimerHandle, this, &AEnemy_Boss_Stage1::UpdateSpeed, 0.1f, true);
+	APawn* Player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	if (!Player) return;
+
+	float Distance = FVector::Dist(GetActorLocation(), Player->GetActorLocation());
+
+	SetSpeedByDistance(Distance);
+	Cast<AAIController>(GetController())->GetBlackboardComponent()->SetValueAsFloat(FName("DistanceToTarget"), Distance);
 }
 
 // Base decision logic for enemy's next action
@@ -65,28 +85,14 @@ void AEnemy_Boss_Stage1::DecideNextAction()
 	}
 }
 
-void AEnemy_Boss_Stage1::UpdateSpeed()
-{
-	if (CharacterState != EEnemyState::InCombat) return;
-
-	APawn* Player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
-	if (!Player) return;
-
-	float Distance = FVector::Dist(GetActorLocation(), Player->GetActorLocation());
-	SetSpeedByDistance(Distance);
-
-	Cast<AAIController>(GetController())->GetBlackboardComponent()->SetValueAsFloat(FName("DistanceToTarget"), Distance);
-}
-
+// Handle resuming to combat state, refocusing on the player and updates the blackboard
 void AEnemy_Boss_Stage1::ResumeCombat()
 {
 	Super::ResumeCombat();
 
 	AAIController* AIC = Cast<AAIController>(GetController());
-	if (!AIC) return;
-
 	APawn* Player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
-	if (!Player) return;
+	if (!AIC || !Player) return;
 
 	AIC->SetFocus(Player);
 
@@ -96,24 +102,7 @@ void AEnemy_Boss_Stage1::ResumeCombat()
 	}
 }
 
-// Enable the weapon hitbox for collision detection during attack animations
-void AEnemy_Boss_Stage1::EnableWeaponHitbox()
-{
-	Super::EnableWeaponHitbox();
-
-	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-}
-
-// Disable the weapon hitbox to prevent unintended collisions outside of attack animations
-void AEnemy_Boss_Stage1::DisableWeaponHitbox()
-{
-	Super::DisableWeaponHitbox();
-
-	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	AlreadyHitActors.Empty();
-	AttackIdx++;
-}
-
+// Detach the weapon mesh and enable physics simulation on it when the boss dies to create a more dramatic death effect
 void AEnemy_Boss_Stage1::Die()
 {
 	Super::Die();

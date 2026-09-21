@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Components/BoxComponent.h"
 #include "Enemy/EnemyTypes.h"
 #include "Enemy.generated.h"
 
@@ -31,11 +32,14 @@ protected:
 	UPROPERTY(VisibleAnywhere,Category = "Combat")
 	bool bBackstabbed = false;
 
-	UPROPERTY(VisibleAnywhere, Category = "Combat")
-	bool bCriticalHit = false;
-
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float BackstabMultiplier = 2.5f;
+	
+	UPROPERTY(VisibleAnywhere, Category = "Combat")
+	bool bCanBeParried = false;
+
+	UPROPERTY(VisibleAnywhere, Category = "Combat")
+	bool bCriticalHit = false;
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float CriticalHitMultiplier = 3.f;
@@ -54,6 +58,16 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Combat")
 	TArray<AActor*> AlreadyHitActors;
+
+	// Weapon properties
+	UPROPERTY(EditAnywhere, Category = "Weapon")
+	UMeshComponent* WeaponMesh = nullptr;
+
+	UPROPERTY(EditAnywhere, Category = "Weapon")
+	UBoxComponent* WeaponHitbox;
+
+	UPROPERTY(EditAnywhere, Category = "Weapon")
+	FName WeaponSocketName = TEXT("HandGrip_R");
 				
 	// Poise system
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Poise")
@@ -115,13 +129,22 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Animation")
 	UAnimMontage* CriticalHitMontage = nullptr;
+	
+	UPROPERTY(EditAnywhere, Category = "Animation")
+	UAnimMontage* ParriedMontage = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Animation")
 	UAnimMontage* DeathMontage = nullptr;
 
+	virtual void PostInitializeComponents() override;
+
 	virtual void BeginPlay() override;
 
 	void SetCharacterState(EEnemyState NewState);
+
+	void InterruptCurrentAttack();
+
+	virtual void NotifyHealthBarUpdate(float NewCurrentHealth, float NewMaxHealth) {}
 
 public:
 	EEnemyState GetCharacterState() const { return CharacterState; }
@@ -132,9 +155,15 @@ public:
 
 	float GetMaxHealth() const { return MaxHealth; }
 
+	float GetMinCombatRange() const { return MinCombatRange; }
+
+	float GetMaxCombatRange() const { return MaxCombatRange; }
+
 	bool CanBeBackstabbed() const { return bAllowBackstab; }
 
 	bool CanBeCriticalHit() const { return CharacterState == EEnemyState::Groggy; }
+
+	bool CanBeParried() const { return bCanBeParried; }
 
 	virtual void SetSpeedByDistance(float Distance);
 
@@ -154,14 +183,15 @@ public:
 	void FinishAttackPattern();
 
 	UFUNCTION(BlueprintCallable)
-	virtual void EnableWeaponHitbox();
+	void EnableWeaponHitbox();
 
 	UFUNCTION(BlueprintCallable)
-	virtual void DisableWeaponHitbox();
+	void DisableWeaponHitbox();
 
 	UFUNCTION()
 	void OnWeaponHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, 
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
 	UFUNCTION(BlueprintCallable)
 	void EnableAttackRotation();
 
@@ -173,6 +203,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void DisableAttackMovement();
+
+	UFUNCTION(BlueprintCallable)
+	void SetParryable(bool bIsParryable) { bCanBeParried = bIsParryable; }
 
 	void EnterPatrol();
 
@@ -198,5 +231,9 @@ public:
 
 	void GetCriticalHit(AActor* Attacker);
 
+	void GetParried(AActor* Attacker);
+
     virtual void Die();
+
+	virtual void NotifyHealthBarLockOn(bool bIsLockedOn) {}
 };

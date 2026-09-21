@@ -13,13 +13,16 @@ public class Project_Soul : ModuleRules
 			"Core",
 			"CoreUObject",
 			"Engine",
-			"InputCore",
 			"EnhancedInput",
             "GameplayTags",
 			"GameplayTasks",
+			"InputCore",
 			"Kismet",
+            "MotionWarping",
 			"NavigationSystem",
-            "MotionWarping"
+			"Slate",
+            "SlateCore",
+            "UMG"
         });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });

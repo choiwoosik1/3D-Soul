@@ -17,6 +17,15 @@ enum class EEnemyState : uint8
     Dead
 };
 
+// Enumeration for guard responses, used to determine how the player reacts to enemy attacks
+UENUM(BlueprintType)
+enum class EGuardResponse : uint8
+{
+    Block,       // Guard negates damage, consumes partial stamina
+    GuardBreak,  // Guard negates damage but stamina drops to 0 and guard breaks
+	Ignore       // Guard does not block the attack, player takes full damage
+};
+
 // Structure to define properties of an individual attack
 USTRUCT(BlueprintType)
 struct FAttackProperties
@@ -34,6 +43,9 @@ struct FAttackProperties
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float MovementSpeed = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EGuardResponse GuardResponse = EGuardResponse::Block;
 };
 
 // Structure to define an attack pattern, including animation montage and attack properties
@@ -52,6 +64,7 @@ struct FAttackPattern
     float AttackRange = 200.f;
 };
 
+// Structure to record player's dodge information for AI decision making
 USTRUCT(BlueprintType)
 struct FDodgeRecord
 {
@@ -88,27 +101,34 @@ struct FPlayerActionRecord
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     float DistanceToEnemy;
 
+	// Set the melee attack direction based on the enemy's forward vector
+	// Or set the predicted ranged attack location based on the player's movement 
     void SetAttackDirection(FVector Dir)
     {
         DodgeRecord.AttackDir = Dir;
     }
 
+	// Get the attack direction saved in the beginning of the attack
     FVector GetAttackDirection()
     {
         return DodgeRecord.AttackDir;
     }
 
+	// Get the inverse rotation matrix of the attack direction
+    // Used to transform player dodge direction into enemy's attack-relative space
     FMatrix GetAttackTransform()
     {
         return FRotationMatrix(DodgeRecord.AttackDir.Rotation()).Inverse();
     }
 
+	// Record the player's dodge direction
     void RecordDodge(FVector DodgeDir)
     {
         DodgeRecord.LastDodgeDirection = DodgeDir;
         DodgeRecord.AccumulatedOffset = FMath::Lerp(DodgeRecord.AccumulatedOffset, DodgeDir, 0.5f);
     }
 
+	// Get the accumulated dodge offset, used for adjusting enemy attack movement
     FVector GetCorrectedOffset()
     {
         return DodgeRecord.AccumulatedOffset;
