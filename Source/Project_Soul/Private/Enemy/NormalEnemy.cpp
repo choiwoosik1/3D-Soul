@@ -49,7 +49,6 @@ void ANormalEnemy::Die()
 {
     Super::Die();
 
-    // Implement death logic
     float Duration = DeathMontage->GetPlayLength();
     FTimerHandle RagdollTimerHandle;
     GetWorldTimerManager().SetTimer(RagdollTimerHandle, this, &ANormalEnemy::EnableRagdoll, Duration, false);

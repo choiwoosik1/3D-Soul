@@ -24,6 +24,7 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void OnTargetLockTick(float DeltaTime);
 
+
 private:
 	void TryLockOnTarget();
 	void GetAvaillableActorsToLock();

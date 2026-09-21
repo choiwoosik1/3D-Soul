@@ -55,6 +55,8 @@ void AEnemyAIController::OnPossess(APawn* InPawn)
 // Handle perception updates for sight and hearing, updating the blackboard and enemy state
 void AEnemyAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 {
+    if (Cast<AEnemy>(Actor)) return;
+
     UBlackboardComponent* BBComp = GetBlackboardComponent();
     if (!BBComp) return;
 
@@ -176,7 +178,7 @@ void AEnemyAIController::UpdateDetectionLevel()
             SetFocus(DetectedTarget);
             BBComp->SetValueAsObject(FName("TargetActor"), DetectedTarget);
 			BBComp->SetValueAsFloat(FName("DistanceToTarget"), Distance);
-			Enemy->SetCharacterSpeedByDistance(Distance);
+			Enemy->SetSpeedByDistance(Distance);
 		}
 
         if (!bSightDetected)
@@ -192,7 +194,7 @@ void AEnemyAIController::UpdateDetectionLevel()
 		// If in combat, decrease detection level more slowly and increase movement speed
 		if (Enemy->GetCharacterState() == EEnemyState::InCombat)
         {
-            Enemy->SetCharacterSpeedByDistance(1000.f);
+            Enemy->SetSpeedByDistance(1000.f);
             CurrentDecreaseRate *= 0.5f;
         }
 

@@ -38,10 +38,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Perception")
 	float HearingRange = 1000.f;
 
-	// AI system
-	UPROPERTY(EditAnywhere, Category = "AI")
-	class UBehaviorTree* BTAsset;
-
 public:
 	// Getters for stats and state
 	class UBehaviorTree* GetBehaviorTreeAsset() const { return BTAsset; }

@@ -23,5 +23,5 @@ protected:
 
 	virtual void StartDecisionTimer() override;
 
-	virtual void SetCharacterSpeedByDistance(float Distance) override;
+	virtual void SetSpeedByDistance(float Distance) override;
 };

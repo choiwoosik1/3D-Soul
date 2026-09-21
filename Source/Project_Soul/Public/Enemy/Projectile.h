@@ -18,7 +18,7 @@ protected:
     class UStaticMeshComponent* MeshComponent;
 
     UPROPERTY(VisibleAnywhere, Category = "Components")
-    class USphereComponent* CollisionComponent;
+    class UBoxComponent* CollisionComponent;
 
     UPROPERTY(VisibleAnywhere, Category = "Components")
     class UProjectileMovementComponent* ProjectileMovement;
@@ -30,7 +30,7 @@ protected:
     float Damage = 10.f;
 
     UPROPERTY(EditAnywhere, Category = "Combat")
-	float Speed = 800.f;
+	float Speed = 600.f;
 
     UPROPERTY(EditAnywhere, Category = "Combat")
     float HomingAcceleration = 1000.f;

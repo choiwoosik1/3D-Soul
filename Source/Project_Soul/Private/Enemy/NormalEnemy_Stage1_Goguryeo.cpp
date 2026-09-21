@@ -22,7 +22,9 @@ ANormalEnemy_Stage1_Goguryeo::ANormalEnemy_Stage1_Goguryeo()
 void ANormalEnemy_Stage1_Goguryeo::BeginPlay()
 {
     Super::BeginPlay();
+
     WeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Goguryeo::OnWeaponHitboxOverlap);
+	WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 // Base decision logic for enemy's next action
@@ -87,9 +89,6 @@ void ANormalEnemy_Stage1_Goguryeo::FireProjectile_Implementation()
 	AAIController* AIC = Cast<AAIController>(GetController());
 	if (AIC && AIC->GetFocusActor())
 	{
-		// Record attack movement direction vector
-		PlayerActionRecord.SetAttackDirection(GetActorForwardVector());
-
 		// Calculate lead for moving targets
 		FVector TargetLocation = AIC->GetFocusActor()->GetActorLocation();
 		FVector TargetVelocity = AIC->GetFocusActor()->GetVelocity();
@@ -97,8 +96,11 @@ void ANormalEnemy_Stage1_Goguryeo::FireProjectile_Implementation()
 		float TimeToTarget = Distance / ProjectileSpeed;
 		FVector PredictedLocation = TargetLocation + TargetVelocity * TimeToTarget / 1.7f;
 
-		// Add predicted player dodge location
-		PredictedLocation += GetActorTransform().TransformVectorNoScale(PlayerActionRecord.GetCorrectedOffset()); 
+		// Record attack location
+		PlayerActionRecord.SetAttackDirection(PredictedLocation);
+
+		// Add player dodge prediction
+		PredictedLocation += GetActorTransform().TransformVector(PlayerActionRecord.GetCorrectedOffset());
 		
 		FireRotation = (PredictedLocation - MuzzleLocation).Rotation();
 	}
@@ -106,7 +108,7 @@ void ANormalEnemy_Stage1_Goguryeo::FireProjectile_Implementation()
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
 	SpawnParams.Instigator = this;
-
+	
 	AActor* Projectile = GetWorld()->SpawnActor<AActor>(ProjectileClass, MuzzleLocation, FireRotation, SpawnParams);
 	
 	if (Projectile)

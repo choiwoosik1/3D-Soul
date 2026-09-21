@@ -27,9 +27,9 @@ void ANormalEnemy_Ranged::StartDecisionTimer()
 	GetWorldTimerManager().SetTimer(DecisionTimerHandle, this, &ANormalEnemy_Ranged::DecideNextAction, DecisionTime, true);
 }
 
-void ANormalEnemy_Ranged::SetCharacterSpeedByDistance(float Distance)
+void ANormalEnemy_Ranged::SetSpeedByDistance(float Distance)
 {
-	Super::SetCharacterSpeedByDistance(Distance);
+	Super::SetSpeedByDistance(Distance);
 
 	// Adjust movement speed based on distance to the target, encouraging the ranged enemy to maintain optimal combat range
 	if (Distance < 0.7 * MinCombatRange)

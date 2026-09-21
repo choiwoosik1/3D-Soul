@@ -1,40 +1,19 @@
 #include "Enemy/Enemy.h"
-#include "AbilitySystemComponent.h"
-#include "Enemy/EnemyAttributeSet.h"
-#include "Components/UI/EnemyUIComponent.h"
-#include "Components/WidgetComponent.h"
-#include "Widgets/KwangWidgetBase.h"
-#include "KwangGameplayTags.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "AbilitySystemComponent.h"
-#include "Enemy/EnemyAttributeSet.h"
 
 // Sets default values
 AEnemy::AEnemy()
 {
     PrimaryActorTick.bCanEverTick = false;
-	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
-	AttributeSet = CreateDefaultSubobject<UEnemyAttributeSet>(TEXT("AttributeSet"));
-
-	EnemyUIComponent = CreateDefaultSubobject<UEnemyUIComponent>(TEXT("EnemyUIComponent"));
-	EnemyHealthWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("EnemyHealthWidgetComponent"));
-	EnemyHealthWidgetComponent->SetupAttachment(GetMesh());
 }
 
 // Called when the game starts or when spawned
 void AEnemy::BeginPlay()
 {
 	Super::BeginPlay();
-
-	AbilitySystemComponent->InitAbilityActorInfo(this, this);
-
-	if (UKwangWidgetBase* HealthWidget = Cast<UKwangWidgetBase>(EnemyHealthWidgetComponent->GetUserWidgetObject()))
-    {
-        HealthWidget->InitEnemyCreatedWidget(this);
-    }
 
 	CurrentHealth = MaxHealth;
     LimitPoise = MaxPoise;
@@ -99,7 +78,7 @@ void AEnemy::SetCharacterState(EEnemyState NewState)
 }
 
 // Adjust the character's movement speed in combat state based on the distance to the target
-void AEnemy::SetCharacterSpeedByDistance(float Distance)
+void AEnemy::SetSpeedByDistance(float Distance)
 {
 	// If the distance is less than or equal to the maximum combat range, set the speed to StrafeSpeed
     if (Distance <= MaxCombatRange)
@@ -127,14 +106,16 @@ void AEnemy::SetCharacterSpeedByDistance(float Distance)
 
 // Handle incoming damage, update health and poise,
 // And determine if the enemy should stagger, enter groggy state, or die
-float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, 
+// Handle incoming damage, update health and poise,
+// And determine if the enemy should stagger, enter groggy state, or die
+float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
     AController* EventInstigator, AActor* DamageCauser)
 {
     if (CharacterState == EEnemyState::Dead) return 0.f;
-    
+
     float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
-	// Apply backstab or critical hit multipliers if applicable, and reset the flags
+    // Apply backstab or critical hit multipliers if applicable, and reset the flags
     if (bBackstabbed)
     {
         if (DamageCauser != AttackInitiator) return 0.f;
@@ -144,30 +125,44 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
     }
     else if (bCriticalHit)
     {
-		if (DamageCauser != AttackInitiator) return 0.f;
+        if (DamageCauser != AttackInitiator) return 0.f;
         ActualDamage *= CriticalHitMultiplier;
         bCriticalHit = false;
     }
-    
-	// Reduce health by the actual damage amount
+
+    // [수정된 부분] 체력을 깎기 직전에 현재 체력을 저장해 둡니다.
+    /*float PreviousHealth = CurrentHealth;*/
+
+    // Reduce health by the actual damage amount
     CurrentHealth = FMath::Clamp(CurrentHealth - ActualDamage, 0.0f, MaxHealth);
+
+    // [수정된 부분] 글자 깨짐 방지를 위해 영어로 로그를 출력합니다.
+    /*UE_LOG(LogTemp, Warning, TEXT("Hit Enemy: %s | Damage: %f | Health: %f -> %f"),
+        *GetName(), ActualDamage, PreviousHealth, CurrentHealth);
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red,
+            FString::Printf(TEXT("Enemy HP: %f / %f"), CurrentHealth, MaxHealth));
+    }*/
+
     if (CurrentHealth <= 0.0f)
     {
         Die();
         return ActualDamage;
     }
 
-	// Poise reduction logic
+    // Poise reduction logic
     if (CurrentPoise > 0)
     {
         CurrentPoise -= DamageAmount;
         if (CurrentPoise <= 0)
-        {   
-			// Reduce Limit Poise
+        {
+            // Reduce Limit Poise
             float PoiseReduction = MaxPoise * LimitPoiseReductionRate;
             LimitPoise = FMath::Clamp(LimitPoise - PoiseReduction, 0.f, MaxPoise);
-        
-			// Enter stagger or groggy state based on remaining Limit Poise
+
+            // Enter stagger or groggy state based on remaining Limit Poise
             if (LimitPoise <= MaxPoise * PoiseThreshold)
             {
                 EnterGroggy();
@@ -178,7 +173,7 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
             }
         }
     }
-    
+
     return ActualDamage;
 }
 
@@ -228,8 +223,10 @@ void AEnemy::FinishAttackPattern()
 // Enable the weapon hitbox for the current attack
 void AEnemy::EnableWeaponHitbox()
 {
+    /*
     UE_LOG(LogTemp, Warning, TEXT("Pattern: %d / Attack: %d / Damage: %.1f"), PatternIdx, AttackIdx,
         BaseDamage * Patterns[PatternIdx].Attacks[AttackIdx].DamageMultiplier);
+    */
 }
 
 // Disable the weapon hitbox after the attack
@@ -252,19 +249,21 @@ void AEnemy::OnWeaponHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActor* 
     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
     if (!Patterns.IsValidIndex(PatternIdx)) return;
-    if (!Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
-    if (!OtherActor || OtherActor == this || AlreadyHitActors.Contains(OtherActor)) return;
-    if (OtherComp != Cast<ACharacter>(OtherActor)->GetMesh()) return;
+    FAttackPattern Pattern = Patterns[PatternIdx];
+    
+    if (!Pattern.Attacks.IsValidIndex(AttackIdx)) return;
+    FAttackProperties Attack = Pattern.Attacks[AttackIdx];
+
+    if (!OtherActor || OtherActor == this || AlreadyHitActors.Contains(OtherActor) || Cast<AEnemy>(OtherActor)) return;
 
     AlreadyHitActors.Add(OtherActor);
 
-    float Multiplier = Patterns[PatternIdx].Attacks[AttackIdx].DamageMultiplier;
+    float Multiplier = Attack.DamageMultiplier;
 
     UGameplayStatics::ApplyDamage(OtherActor, BaseDamage * Multiplier, GetController(), this, nullptr);
 
-    UE_LOG(LogTemp, Warning, TEXT("Hit: %s, %s / Pattern: %d / Attack: %d / Damage: %.1f"),
-        *OtherActor->GetName(), *OtherComp->GetName(), PatternIdx, AttackIdx,
-        BaseDamage * Patterns[PatternIdx].Attacks[AttackIdx].DamageMultiplier);
+    UE_LOG(LogTemp, Warning, TEXT("Hit: %s / Pattern: %d / Attack: %d / Damage: %.1f"),
+        *OtherActor->GetName(), PatternIdx, AttackIdx, BaseDamage * Multiplier);
 }
 
 // Enable rotation during an attack, adjusting rotation speed based on the attack properties
@@ -310,7 +309,7 @@ void AEnemy::EnableAttackMovement()
             FVector TargetLocation = AIC->GetFocusActor()->GetActorLocation();
             
             // Add predicted player dodge location
-            TargetLocation += GetActorTransform().TransformVectorNoScale(PlayerActionRecord.GetCorrectedOffset());
+            TargetLocation += GetActorTransform().TransformVector(PlayerActionRecord.GetCorrectedOffset());
 
             AIC->MoveToLocation(TargetLocation);
         }
@@ -355,6 +354,12 @@ void AEnemy::EnterCombat()
     }
 }
 
+// Returnt to combat state from stagger or groggy state
+void AEnemy::ResumeCombat()
+{
+    SetCharacterState(EEnemyState::InCombat);
+}
+
 // Handle entering stagger state, playing animation
 void AEnemy::EnterStagger()
 {
@@ -372,7 +377,7 @@ void AEnemy::ExitStagger()
     if (CharacterState != EEnemyState::Stagger) return;
 
     CurrentPoise = LimitPoise;
-    SetCharacterState(EEnemyState::InCombat);
+    ResumeCombat();
 }
 
 // Handle entering groggy state, playing animation and providing player opportunity
@@ -393,7 +398,7 @@ void AEnemy::ExitGroggy()
 
     LimitPoise = MaxPoise;
     CurrentPoise = LimitPoise;
-    SetCharacterState(EEnemyState::InCombat);
+    ResumeCombat();
 }
 
 void AEnemy::GetBackstabbed(AActor* Attacker)

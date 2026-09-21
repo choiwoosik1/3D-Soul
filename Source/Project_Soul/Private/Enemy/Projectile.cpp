@@ -1,6 +1,6 @@
 #include "Enemy/Projectile.h"
 #include "Enemy/Enemy.h"
-#include "Components/SphereComponent.h"
+#include "Components/BoxComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -8,9 +8,9 @@
 AProjectile::AProjectile()
 {
 	PrimaryActorTick.bCanEverTick = true;
-    CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComponent"));
-    CollisionComponent->SetSphereRadius(15.f);
-    CollisionComponent->SetCollisionProfileName(TEXT("Projectile"));
+    CollisionComponent = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionComponent"));
+    CollisionComponent->SetBoxExtent(FVector(15.f, 15.f, 15.f));
+    CollisionComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
     RootComponent = CollisionComponent;
 
     MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
@@ -58,37 +58,49 @@ void AProjectile::Tick(float DeltaTime)
     FVector ToTarget = Player->GetActorLocation() - GetActorLocation();
     FVector CurrentDirection = ProjectileMovement->Velocity.GetSafeNormal();
 
-    if (FVector::DotProduct(CurrentDirection, ToTarget.GetSafeNormal()) < 0.2f)
+    // Disable projectile homing when the projectile has missed the target
+    if (FVector::DotProduct(CurrentDirection, ToTarget.GetSafeNormal()) < 0.f)
     {
         ProjectileMovement->bIsHomingProjectile = false;
 
+        // Record player dodge location
         AEnemy* Enemy = Cast<AEnemy>(GetInstigator());
         if (Enemy)
         {
-            FVector ToPlayer = (Player->GetActorLocation() - GetActorLocation());
-            FVector ToPlayerDir = Enemy->GetPlayerActionRecord().GetAttackTransform().TransformVector(ToPlayer);
+            FVector ToPlayer = (Player->GetActorLocation() - Enemy->GetPlayerActionRecord().GetAttackDirection());
+            FVector ToPlayerDir = GetActorTransform().InverseTransformVector(ToPlayer);
 
             Enemy->GetPlayerActionRecord().RecordDodge(ToPlayerDir);
         }
         return;
     }
 
+    // Adjust homing location with the predicted player movement
 	FVector TargetVelocity = Player->GetVelocity();
 	float Distance = ToTarget.Size();
 	float TimeToTarget = Distance / ProjectileMovement->InitialSpeed;
-
 	HomingTarget->SetWorldLocation(Player->GetActorLocation() + TargetVelocity * TimeToTarget);
+
+    // Reduce homing acceleration as the projectile gets closer to the target
+    if (Distance < 500.f)
+    {
+        float Alpha = FMath::Clamp(Distance / 500.f, 0.3f, 1.f);
+        ProjectileMovement->HomingAccelerationMagnitude = FMath::Lerp(0.f, HomingAcceleration, Alpha);
+    }
 }
 
 void AProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
     UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-    if (!OtherActor || OtherActor == GetInstigator()) return;
+    if (!OtherActor || OtherActor == GetInstigator() || Cast<AEnemy>(OtherActor)) 
+    {
+        Destroy();
+        return;
+    }
 
     UGameplayStatics::ApplyDamage(OtherActor, Damage, GetInstigator()->GetController(), this, nullptr);
    
-    UE_LOG(LogTemp, Warning, TEXT("Hit: %s, %s / Damage: %.1f"), 
-        *OtherActor->GetName(), *OtherComp->GetName(), Damage);
+    UE_LOG(LogTemp, Warning, TEXT("Hit: %s / Damage: %.1f"), *OtherActor->GetName(), Damage);
 
     Destroy();
 }

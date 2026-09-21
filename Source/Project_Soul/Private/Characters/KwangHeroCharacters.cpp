@@ -146,6 +146,11 @@ void AKwangHeroCharacters::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 // 키보드(WASD)를 누를 때마다 실제로 실행될 이동 콜백 함수
 void AKwangHeroCharacters::Input_Move(const FInputActionValue& InputActionValue)
 {
+	if (UKwangFunctionLibrary::NativeDoesActorHaveTag(this, KwangGameplayTags::Player_Status_GuardBroken))
+	{
+		return;
+	}
+
 	// 1. 입력된 키보드 값을 2D 벡터(X, Y) 형태로 뽑아온다.
 	// W/S를 누르면 Y축 값이 1.0 / -1.0 으로 들어오고, D/A를 누르면 X축 값이 1.0 / -1.0 으로 들어온다.
 	const FVector2D MovementVector = InputActionValue.Get<FVector2D>();
@@ -208,6 +213,17 @@ void AKwangHeroCharacters::Input_AbilityInputReleased(FGameplayTag InInputTag)
 
 float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
+	if (UKwangFunctionLibrary::NativeDoesActorHaveTag(this, KwangGameplayTags::Shared_Status_Dead))
+		return 0.f;
+
+	// 만약 현재 구르고 있어서 bIsInvincible이 true라면?
+	if (bIsInvincible)
+	{
+		// 데미지를 0으로 만들고 함수를 즉시 종료합니다. (피가 안 깎임!)
+		// 원한다면 여기에 "챙!" 하는 가드 이펙트나 소리를 넣을 수도 있습니다.
+		return 0.0f;
+	}
+
 	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
 	if (ActualDamage > 0.f)
@@ -228,7 +244,18 @@ float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& D
 						this, KwangGameplayTags::Player_Event_Parry, EventData);
 
 					// 임시 디버그
-					Debug::Print(TEXT("Parry Success!"), FColor::Green);
+					Debug::Print(TEXT("Block Success!"), FColor::Green);
+
+					UKwangAbilitySystemComponent* ParryASC = UKwangFunctionLibrary::NativeGetKwangASCFromActor(this);
+					if (ParryASC && BlockStaminaCostEffectClass)
+					{
+						FGameplayEffectSpecHandle ParryStaminaCostSpec = ParryASC->MakeOutgoingSpec(
+							BlockStaminaCostEffectClass, 1.f, ParryASC->MakeEffectContext());
+						UAbilitySystemBlueprintLibrary::AssignTagSetByCallerMagnitude(
+							ParryStaminaCostSpec, KwangGameplayTags::Shared_SetByCaller_BlockStaminaCost,
+							-ActualDamage * BlockStaminaCostRatio * ParryStaminaCostMultiplier);
+						ParryASC->ApplyGameplayEffectSpecToSelf(*ParryStaminaCostSpec.Data.Get());
+					}
 
 					return 0.f;
 				}
@@ -243,6 +270,17 @@ float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& D
 					UAbilitySystemBlueprintLibrary::AssignTagSetByCallerMagnitude(
 						SpecHandle, KwangGameplayTags::Shared_SetByCaller_BaseDamage, ActualDamage);
 					ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+				}
+
+				if (ASC && BlockStaminaCostEffectClass)
+				{
+					FGameplayEffectSpecHandle StaminaCostSpec = ASC->MakeOutgoingSpec(
+						BlockStaminaCostEffectClass, 1.f, ASC->MakeEffectContext());
+
+					UAbilitySystemBlueprintLibrary::AssignTagSetByCallerMagnitude(
+						StaminaCostSpec, KwangGameplayTags::Shared_SetByCaller_BlockStaminaCost, -ActualDamage * BlockStaminaCostRatio);
+
+					ASC->ApplyGameplayEffectSpecToSelf(*StaminaCostSpec.Data.Get());
 				}
 				return ActualDamage;
 			}
@@ -259,6 +297,16 @@ float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& D
 			ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 		}
 
+		// 여기에 추가
+		if (UKwangFunctionLibrary::NativeDoesActorHaveTag(this, KwangGameplayTags::Shared_Status_Dead))
+		{
+			if (DeathMontage)
+			{
+				PlayAnimMontage(DeathMontage);
+			}
+			return ActualDamage;
+		}
+
 		FGameplayEventData EventData;
 		EventData.Instigator = DamageCauser;
 		EventData.Target = this;
@@ -268,6 +316,52 @@ float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& D
 
 	return ActualDamage;
 }
+
+void AKwangHeroCharacters::TriggerGuardBreak(bool bIsHeavyBreak)
+{
+	UKwangAbilitySystemComponent* ASC = UKwangFunctionLibrary::NativeGetKwangASCFromActor(this);
+
+	if (!ASC) return;
+
+	// 방어 어빌리티 강제 종료
+	FGameplayTagContainer BlockTagContainer;
+	BlockTagContainer.AddTag(KwangGameplayTags::Player_Ability_Block);
+	ASC->CancelAbilities(&BlockTagContainer);
+
+	// 자연 소진이냐 가드 브레이크 공격에 의한 것인지 따라 다른 GE 적용
+	TSubclassOf<UGameplayEffect> EffectToApply = bIsHeavyBreak ? HeavyGuardBrokenEffectClass : GuardBrokenEffectClass;
+	float StunDuration = 1.5f; // Spec에서 못 읽어올 경우의 안전한 기본값
+
+	if (EffectToApply)
+	{
+		FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(
+			EffectToApply, 1.f, ASC->MakeEffectContext());
+
+		if (SpecHandle.IsValid())
+		{
+			StunDuration = SpecHandle.Data->GetDuration();
+			ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		}
+	}
+
+	// 행동 불능 애니메이션 재생 (루프) + GE 지속시간과 맞춰 정지
+	if (GuardBrokenMontage)
+	{
+		PlayAnimMontage(GuardBrokenMontage);
+
+		GetWorldTimerManager().SetTimer(
+			GuardBrokenMontageTimerHandle,
+			[this]() { StopAnimMontage(GuardBrokenMontage); },
+			StunDuration,
+			false);
+	}
+}
+
+void AKwangHeroCharacters::SetInvincible(bool bInvincible)
+{
+	bIsInvincible = bInvincible;
+}
+
 
 bool AKwangHeroCharacters::IsBlocking() const
 {

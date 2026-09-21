@@ -8,6 +8,8 @@
 #include "Interfaces/PawnUIInterface.h"
 #include "Components/UI/PawnUIComponent.h"
 #include "Components/UI/HeroUIComponent.h"
+#include "Characters/KwangHeroCharacters.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 #include "KwangDebugHelper.h"
 
@@ -53,6 +55,18 @@ void UKwangAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 		{
 			HeroUIComponent->OnCurrentRageChanged.Broadcast(GetCurrentRage() / GetMaxRage());
 		}
+
+		if (NewCurrentRage <= 0.f)
+		{
+			if (AKwangHeroCharacters* HeroCharacter = Cast<AKwangHeroCharacters>(Data.Target.GetAvatarActor()))
+			{
+				// 방어 시에 스태미나 0 될때만
+				if (HeroCharacter->IsBlocking())          
+				{
+					HeroCharacter->TriggerGuardBreak(false);
+				}
+			}                                              
+		}
 	}
 
 	if (Data.EvaluatedData.Attribute == GetDamageTakenAttribute())
@@ -78,6 +92,18 @@ void UKwangAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 		if (GetCurrentHealth() == 0.f)
 		{
 			UKwangFunctionLibrary::AddGameplayTagToActorIfNone(Data.Target.GetAvatarActor(), KwangGameplayTags::Shared_Status_Dead);
+
+			if (AKwangHeroCharacters* Hero = Cast<AKwangHeroCharacters>(Data.Target.GetAvatarActor()))
+			{
+				if (Hero->DeathMontage)
+				{
+					Hero->PlayAnimMontage(Hero->DeathMontage);
+				}
+				// 이동 막기
+				Hero->GetCharacterMovement()->DisableMovement();
+				// 입력 막기
+				Hero->DisableInput(nullptr);
+			}
 		}
 	}
 }
