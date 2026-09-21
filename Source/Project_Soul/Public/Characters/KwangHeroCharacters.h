@@ -48,9 +48,9 @@ protected:
 	// Called when the game starts or when spawned
 	// virtual : 부모 클래스의 원본 함수가 있지만 현재 클래스 상황에 맞게 고침
 	virtual void BeginPlay() override;
-	
+
 private:
-// #pragma region: Visual Studio에서 코드를 접었다 펼칠 수 있게 해주는 단순 UI 기능
+	// #pragma region: Visual Studio에서 코드를 접었다 펼칠 수 있게 해주는 단순 UI 기능
 #pragma region Components
 
 	// VisibleAnywhere: 에디터 디테일 패널에서 컴포넌트 속성을 볼 수 있게 함
@@ -93,19 +93,41 @@ private:
 #pragma region Combat
 public:
 	bool IsBlocking() const;
-#pragma endregion
 
 public:
-	FORCEINLINE UHeroCombatComponent* GetHeroCombatComponent() const{ return HeroCombatComponent; }
+	FORCEINLINE UHeroCombatComponent* GetHeroCombatComponent() const { return HeroCombatComponent; }
 
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
 		AController* EventInstigator, AActor* DamageCauser) override;
+
+	void TriggerGuardBreak(bool bIsHeavyBreak);
 
 	UPROPERTY(EditDefaultsOnly, Category = "Combat")
 	UAnimMontage* HitReactMontage;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Combat")
 	TSubclassOf<UGameplayEffect> DamageEffectClass;
+
+	// Block으로 인해 스태미나를 줄이는데 사용할 GameEffect
+	UPROPERTY(EditDefaultsOnly, Category = "Block")
+	TSubclassOf<UGameplayEffect> BlockStaminaCostEffectClass;
+
+	// 막은 데미지 스태미나 줄이는 배율
+	UPROPERTY(EditAnywhere, Category = "Block")
+	float BlockStaminaCostRatio = 1.0f;
+
+	// 패링 성공시 스태미나 줄이는 배율
+	UPROPERTY(EditAnywhere, Category = "Block")
+	float ParryStaminaCostMultiplier = 0.5f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Block")
+	TSubclassOf<UGameplayEffect> GuardBrokenEffectClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Block")
+	TSubclassOf<UGameplayEffect> HeavyGuardBrokenEffectClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Block")
+	UAnimMontage* GuardBrokenMontage;
 
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void SetInvincible(bool bInvincible);
@@ -115,4 +137,8 @@ public:
 
 private:
 	bool bIsInvincible = false;
+
+	FTimerHandle GuardBrokenMontageTimerHandle;
 };
+#pragma endregion
+

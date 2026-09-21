@@ -55,6 +55,18 @@ void UKwangAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 		{
 			HeroUIComponent->OnCurrentRageChanged.Broadcast(GetCurrentRage() / GetMaxRage());
 		}
+
+		if (NewCurrentRage <= 0.f)
+		{
+			if (AKwangHeroCharacters* HeroCharacter = Cast<AKwangHeroCharacters>(Data.Target.GetAvatarActor()))
+			{
+				// 방어 시에 스태미나 0 될때만
+				if (HeroCharacter->IsBlocking())          
+				{
+					HeroCharacter->TriggerGuardBreak(false);
+				}
+			}                                              
+		}
 	}
 
 	if (Data.EvaluatedData.Attribute == GetDamageTakenAttribute())
