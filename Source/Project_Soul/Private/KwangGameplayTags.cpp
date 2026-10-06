@@ -42,6 +42,17 @@ namespace KwangGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Player_Event_HitPause, "Player.Event.HitPause");
 	UE_DEFINE_GAMEPLAY_TAG(Player_Event_Parry, "Player.Event.Parry");
 
+	/** Player Skill Tags (¹«»ç) **/
+	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Ability_Skill_Warrior_BattleCry);
+	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Ability_Skill_Warrior_Charge);
+	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Ability_Skill_Warrior_Whirlwind);
+	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Ability_Skill_Warrior_HeavyStrike);
+
+	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Cooldown_Skill_Warrior_BattleCry);
+	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Cooldown_Skill_Warrior_Charge);
+	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Cooldown_Skill_Warrior_Whirlwind);
+	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Cooldown_Skill_Warrior_HeavyStrike);
+
 	/** Enemy Tags **/
 	UE_DEFINE_GAMEPLAY_TAG(Enemy_Ability_Melee, "Enemy.Ability.Melee");
 	UE_DEFINE_GAMEPLAY_TAG(Enemy_Ability_Ranged, "Enemy.Ability.Ranged");

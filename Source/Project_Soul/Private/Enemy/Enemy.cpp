@@ -120,8 +120,7 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
     {
         if (DamageCauser != AttackInitiator) return 0.f;
         ActualDamage *= BackstabMultiplier;
-        bBackstabbed = false;
-
+        bBackstabbed = false;;
     }
     else if (bCriticalHit)
     {
