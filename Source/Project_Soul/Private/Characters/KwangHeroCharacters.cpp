@@ -396,7 +396,7 @@ void AKwangHeroCharacters::TriggerGuardBreak(bool bIsHeavyBreak)
 
 	// 행동 불능 애니메이션 재생 (루프) + GE 지속시간과 맞춰 정지
 	if (GuardBrokenMontage)
-	{a
+	{
 		PlayAnimMontage(GuardBrokenMontage);
 
 		GetWorldTimerManager().SetTimer(
