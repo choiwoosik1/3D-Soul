@@ -17,6 +17,13 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystem/KwangAttributeSet.h"
 #include "KwangFunctionLibrary.h"
+#include "Kismet/GameplayStatics.h"
+#include "Enemy/Enemy.h"
+#include "Enemy/EnemyDamageTypes.h"
+#include "GameFramework/DamageType.h"
+#include "Engine/DamageEvents.h"
+#include "Interfaces/PawnUIInterface.h"
+#include "Components/UI/HeroUIComponent.h"
 
 #include "KwangDebugHelper.h"
 
@@ -228,8 +235,39 @@ float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& D
 
 	if (ActualDamage > 0.f)
 	{
-		if (IsBlocking() && DamageCauser)
+			// ApplyDamage() 마지막 인자로 넘긴 데미지 타입을 확인.
+			// GuardBreak면 "막아도 뚫리는 공격", Ignore면 "방어 자체를 무시하는 공격"이라는 뜻.
+			const bool bIsGuardBreakAttack = DamageEvent.DamageTypeClass &&
+			DamageEvent.DamageTypeClass->IsChildOf(UDamageType_GuardBreak::StaticClass());
+			const bool bIsIgnoreAttack = DamageEvent.DamageTypeClass &&
+			DamageEvent.DamageTypeClass->IsChildOf(UDamageType_Ignore::StaticClass());
+
+		if (IsBlocking() && DamageCauser && !bIsIgnoreAttack)
 		{
+			if (bIsGuardBreakAttack)
+			{
+				Debug::Print(TEXT("GuardBreak Triggered!"), FColor::Red); // 임시로 추가
+
+				// 방어 어빌리티 강제취소 + 기절 GE 적용(HeavyGuardBrokenEffectClass) + 기절 애니메이션까지
+				// 이 함수 하나가 다 처리해줌 (true = 가드브레이크 공격에 의한 것)
+				TriggerGuardBreak(true);
+
+				// 기절과 별개로 데미지는 그대로 들어가야 하므로, 기존 블록/일반피격이랑 같은 패턴으로
+				// ASC에 데미지 GE 적용. 블록처럼 0.3 곱하는 경감 없이 ActualDamage 그대로 사용.
+				UKwangAbilitySystemComponent* ASC = UKwangFunctionLibrary::NativeGetKwangASCFromActor(this);
+				if (ASC && DamageEffectClass)
+				{
+					FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(
+						DamageEffectClass, 1.f, ASC->MakeEffectContext());
+					UAbilitySystemBlueprintLibrary::AssignTagSetByCallerMagnitude(
+						SpecHandle, KwangGameplayTags::Shared_SetByCaller_BaseDamage, ActualDamage);
+					ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+				}
+
+				// 여기서 끝내야 아래 패링/일반블록 코드로 안 이어짐
+				return ActualDamage;
+			}
+
 			if (UKwangFunctionLibrary::IsValidBlock(DamageCauser, this))
 			{
 				// 패링 타이밍 체크
@@ -328,6 +366,18 @@ void AKwangHeroCharacters::TriggerGuardBreak(bool bIsHeavyBreak)
 	BlockTagContainer.AddTag(KwangGameplayTags::Player_Ability_Block);
 	ASC->CancelAbilities(&BlockTagContainer);
 
+	if (RageResetEffectClass)
+	{
+		FGameplayEffectSpecHandle ResetSpec = ASC->MakeOutgoingSpec(
+			RageResetEffectClass, 1.f, ASC->MakeEffectContext());
+
+		if (ResetSpec.IsValid())
+		{
+			ASC->ApplyGameplayEffectSpecToSelf(*ResetSpec.Data.Get());
+		}
+	}
+
+
 	// 자연 소진이냐 가드 브레이크 공격에 의한 것인지 따라 다른 GE 적용
 	TSubclassOf<UGameplayEffect> EffectToApply = bIsHeavyBreak ? HeavyGuardBrokenEffectClass : GuardBrokenEffectClass;
 	float StunDuration = 1.5f; // Spec에서 못 읽어올 경우의 안전한 기본값
@@ -362,6 +412,44 @@ void AKwangHeroCharacters::SetInvincible(bool bInvincible)
 	bIsInvincible = bInvincible;
 }
 
+void AKwangHeroCharacters::UpdateBlockRotation(float DeltaTime)
+{
+	AActor* NearestEnemy = FindNearestEnemy(BlockEnemySearchRadius);
+	if (!NearestEnemy) return;
+
+	const FVector ToEnemy = NearestEnemy->GetActorLocation() - GetActorLocation();
+	FRotator TargetRotation = ToEnemy.Rotation();
+	TargetRotation.Pitch = 0.f;
+	TargetRotation.Roll = 0.f;
+
+	const FRotator NewRotation = FMath::RInterpTo(GetActorRotation(), TargetRotation, DeltaTime, BlockRotationInterpSpeed);
+	SetActorRotation(NewRotation);
+}
+
+AActor* AKwangHeroCharacters::FindNearestEnemy(float SearchRadius) const
+{
+	TArray<AActor*> FoundEnemies;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AEnemy::StaticClass(), FoundEnemies);
+
+	AActor* Nearest = nullptr;
+	float NearestDistSq = FMath::Square(SearchRadius);
+
+	for (AActor* Actor : FoundEnemies)
+	{
+		AEnemy* Enemy = Cast<AEnemy>(Actor);
+		if (!Enemy || Enemy->GetCurrentHealth() <= 0.f) continue;
+
+		const float DistSq = FVector::DistSquared(GetActorLocation(), Actor->GetActorLocation());
+		if (DistSq < NearestDistSq)
+		{
+			NearestDistSq = DistSq;
+			Nearest = Actor;
+		}
+	}
+
+	return Nearest;
+}
+
 
 bool AKwangHeroCharacters::IsBlocking() const
 {
@@ -376,11 +464,24 @@ void AKwangHeroCharacters::BeginPlay()
 	Super::BeginPlay();
 }
 
+void AKwangHeroCharacters::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	const bool bIsCurrentlyBlocking = IsBlocking();
+	GetCharacterMovement()->bOrientRotationToMovement = !bIsCurrentlyBlocking;
+
+	if (bIsCurrentlyBlocking)
+	{
+		UpdateBlockRotation(DeltaTime);
+	}
+}
+
 
 //void AKwangHeroCharacters::PossessedBy(AController* NewController)
 //{
 //	 1. 부모 클래스의 기본 빙의 로직을 먼저 실행해서 뼈대 세팅
-//	Super::PossessedBy(NewController);
+//	Super::PossessedBy(NewController);	
 //
 //	 2. 내 캐릭터에게 뇌(ASC)와 심장(AttributeSet)이 성공적으로 생성되어 있는지 안전 검사
 //	if (KwangAbilitySystemComponent && KwangAttributeSet)
