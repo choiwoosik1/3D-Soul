@@ -11,7 +11,8 @@ AEnemy_Boss_Stage1::AEnemy_Boss_Stage1()
 	AIControllerClass = AAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
-	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
+	RightWeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RightWeaponMesh"));
+	LeftWeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("LeftWeaponMesh"));
 }
 
 // Called after the actor's components have been initialized
@@ -20,10 +21,12 @@ void AEnemy_Boss_Stage1::PostInitializeComponents()
 	Super::PostInitializeComponents();
 
 	// Attach the weapon mesh to the character's hand socket
-	WeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, WeaponSocketName);
+	RightWeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, RightWeaponSocketName);
+	LeftWeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, LeftWeaponSocketName);
 
 	// Bind the weapon hitbox overlap event and disable it initially to prevent unintended collisions
-	WeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &AEnemy_Boss_Stage1::OnWeaponHitboxOverlap);
+	RightWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &AEnemy_Boss_Stage1::OnWeaponHitboxOverlap);
+	LeftWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &AEnemy_Boss_Stage1::OnWeaponHitboxOverlap);
 }
 
 // Called when the game starts or when spawned
@@ -39,6 +42,43 @@ void AEnemy_Boss_Stage1::BeginPlay()
 	
 	// Start a timer to continuously update the boss's movement speed based on the player's distance
 	GetWorldTimerManager().SetTimer(UpdateDistanceTimerHandle, this, &AEnemy_Boss_Stage1::UpdateDistance, 0.1f, true);
+}
+
+void AEnemy_Boss_Stage1::StartBossFight()
+{
+	ResumeCombat();
+
+	if (!BossHealthBarClass || BossHealthBarWidget) return;
+
+	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+	BossHealthBarWidget = CreateWidget<UBoss_HealthBarWidget>(PC, BossHealthBarClass);
+
+	if (!BossHealthBarWidget) return;
+
+	BossHealthBarWidget->SetBossName(BossDisplayName);
+	BossHealthBarWidget->SetHealthPercent(MaxHealth > 0.f ? CurrentHealth / MaxHealth : 0.f);
+	BossHealthBarWidget->AddToViewport();
+}
+
+void AEnemy_Boss_Stage1::EndBossFight()
+{
+	if (BossHealthBarWidget)
+	{
+		BossHealthBarWidget->RemoveFromParent();
+		BossHealthBarWidget = nullptr;
+	}
+}
+
+void AEnemy_Boss_Stage1::NotifyHealthBarUpdate(float NewCurrentHealth, float NewMaxHealth)
+{
+	if (!BossHealthBarWidget) return;
+
+	BossHealthBarWidget->SetHealthPercent(NewMaxHealth > 0.f ? NewCurrentHealth / NewMaxHealth : 0.f);
+
+	if (NewCurrentHealth <= 0.f)
+	{
+		EndBossFight();
+	}
 }
 
 // Update the boss's movement speed based on the distance to the player and update the blackboard
@@ -99,18 +139,5 @@ void AEnemy_Boss_Stage1::ResumeCombat()
 	if (UBlackboardComponent* BBComp = AIC->GetBlackboardComponent())
 	{
 		BBComp->SetValueAsObject(FName("TargetActor"), Player);
-	}
-}
-
-// Detach the weapon mesh and enable physics simulation on it when the boss dies to create a more dramatic death effect
-void AEnemy_Boss_Stage1::Die()
-{
-	Super::Die();
-
-	if (WeaponMesh)
-	{
-		WeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-		WeaponMesh->SetSimulatePhysics(true);
-		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 	}
 }
