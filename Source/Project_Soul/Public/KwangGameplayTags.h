@@ -35,6 +35,17 @@ namespace KwangGameplayTags
 
 	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Cooldown_Roll);
 
+	/** Player Skill Tags (무사) **/
+	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Ability_Skill_Warrior_BattleCry);
+	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Ability_Skill_Warrior_Charge);
+	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Ability_Skill_Warrior_Whirlwind);
+	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Ability_Skill_Warrior_HeavyStrike);
+
+	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Cooldown_Skill_Warrior_BattleCry);
+	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Cooldown_Skill_Warrior_Charge);
+	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Cooldown_Skill_Warrior_Whirlwind);
+	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Cooldown_Skill_Warrior_HeavyStrike);
+
 	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Weapon_Sword);
 	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Status_Rolling);
 	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Status_Blocking);

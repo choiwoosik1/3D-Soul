@@ -22,4 +22,7 @@ public:
 
 	UPROPERTY(BlueprintCallable, BlueprintAssignable)
 	FOnEquippedWeaponChangedDelegate OnEquippedWeaponChanged;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnPercentChangedDelegate OnCurrentManaChanged;
 };

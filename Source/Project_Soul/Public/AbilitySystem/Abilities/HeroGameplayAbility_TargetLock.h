@@ -53,6 +53,9 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "TargetLock")
 	float TargetLockRotationInterpSpeed;
 
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock")
+	float MaxTargetLockDistance = 2500.f;
+
 	UPROPERTY()
 	TArray<AActor*> AvailableActorsToLock;
 

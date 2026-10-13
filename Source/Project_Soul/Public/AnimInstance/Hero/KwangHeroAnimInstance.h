@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "AnimInstance/KwangCharacterAnimInstance.h"
+#include "GameplayTagContainer.h"
+
 #include "KwangHeroAnimInstance.generated.h"
 
 class AKwangHeroCharacters;
@@ -49,4 +51,7 @@ protected:
 
 	// [내부 타이머] 실제로 캐릭터가 가만히 서 있던 시간을 누적해서 잴 스톱워치 변수
 	float IdleElpasedTime;
+
+	// 피격 경직 태그 (게임 스레드에서 한 번 캐싱)
+	FGameplayTag HitStunTag;
 };

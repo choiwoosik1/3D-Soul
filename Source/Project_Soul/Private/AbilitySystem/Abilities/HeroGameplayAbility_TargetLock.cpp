@@ -39,12 +39,24 @@ void UHeroGameplayAbility_TargetLock::OnTargetLockTick(float DeltaTime)
 		return;
 	}
 
+	// 대상이 너무 멀어지면 락온 해제
+	const float DistanceToTarget = FVector::Dist(
+		GetHeroCharacterFromActorInfo()->GetActorLocation(),
+		CurrentLockedActor->GetActorLocation());
+
+	if (DistanceToTarget > MaxTargetLockDistance)
+	{
+		CancelTargetLockAbility();
+		return;
+	}
+
 	SetTargetLockWidgetPosition();
 
-	const bool bShouldOverrideRotation = !UKwangFunctionLibrary::NativeDoesActorHaveTag(GetHeroCharacterFromActorInfo(), KwangGameplayTags::Player_Status_Rolling) &&
-		!UKwangFunctionLibrary::NativeDoesActorHaveTag(GetHeroCharacterFromActorInfo(), KwangGameplayTags::Player_Status_Blocking);
+	const bool bIsRolling = UKwangFunctionLibrary::NativeDoesActorHaveTag(GetHeroCharacterFromActorInfo(), KwangGameplayTags::Player_Status_Rolling);
+	const bool bIsBlocking = UKwangFunctionLibrary::NativeDoesActorHaveTag(GetHeroCharacterFromActorInfo(), KwangGameplayTags::Player_Status_Blocking);
 
-	if (bShouldOverrideRotation)
+	// 구르는 중에는 회전 간섭 안 함
+	if (!bIsRolling)
 	{
 		FVector TargetLocation = CurrentLockedActor->GetActorLocation() + FVector(0.f, 0.f, 80.f);
 		FVector StartLocation = GetHeroCharacterFromActorInfo()->GetActorLocation() + FVector(0.f, 0.f, 50.f);
@@ -53,8 +65,14 @@ void UHeroGameplayAbility_TargetLock::OnTargetLockTick(float DeltaTime)
 		const FRotator CurrentControlRot = GetHeroControllerFromActorInfo()->GetControlRotation();
 		const FRotator TargetRot = FMath::RInterpTo(CurrentControlRot, LookAtRot, DeltaTime, TargetLockRotationInterpSpeed);
 
+		// 카메라는 방어 중에도 락온 대상을 따라감
 		GetHeroControllerFromActorInfo()->SetControlRotation(FRotator(TargetRot.Pitch, TargetRot.Yaw, 0.f));
-		GetHeroCharacterFromActorInfo()->SetActorRotation(FRotator(0.f, TargetRot.Yaw, 0.f));
+
+		// 몸 회전은 방어 중이 아닐 때만 (방어 중에는 Tick의 UpdateBlockRotation이 담당)
+		if (!bIsBlocking)
+		{
+			GetHeroCharacterFromActorInfo()->SetActorRotation(FRotator(0.f, TargetRot.Yaw, 0.f));
+		}
 	}
 }
 

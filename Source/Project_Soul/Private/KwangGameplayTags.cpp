@@ -12,6 +12,11 @@ namespace KwangGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(InputTag_HeavyAttack_Sword, "InputTag.HeavyAttack.Sword");
 	UE_DEFINE_GAMEPLAY_TAG(InputTag_Roll, "InputTag.Roll");
 
+	UE_DEFINE_GAMEPLAY_TAG(InputTag_Skill_1, "InputTag.Skill.1");
+	UE_DEFINE_GAMEPLAY_TAG(InputTag_Skill_2, "InputTag.Skill.2");
+	UE_DEFINE_GAMEPLAY_TAG(InputTag_Skill_3, "InputTag.Skill.3");
+	UE_DEFINE_GAMEPLAY_TAG(InputTag_Skill_4, "InputTag.Skill.4");
+
 	UE_DEFINE_GAMEPLAY_TAG(InputTag_MustBeHeld, "InputTag.MustBeHeld");
 	UE_DEFINE_GAMEPLAY_TAG(InputTag_MustBeHeld_Block, "InputTag.MustBeHeld.Block");
 
@@ -44,15 +49,15 @@ namespace KwangGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Player_Event_Parry, "Player.Event.Parry");
 
 	/** Player Skill Tags (¹«»ç) **/
-	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Ability_Skill_Warrior_BattleCry);
-	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Ability_Skill_Warrior_Charge);
-	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Ability_Skill_Warrior_Whirlwind);
-	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Ability_Skill_Warrior_HeavyStrike);
+	UE_DEFINE_GAMEPLAY_TAG(Player_Ability_Skill_Warrior_BattleCry, "Player.Ability.Skill.Warrior.BattleCry");
+	UE_DEFINE_GAMEPLAY_TAG(Player_Ability_Skill_Warrior_Charge, "Player.Ability.Skill.Warrior.Charge");
+	UE_DEFINE_GAMEPLAY_TAG(Player_Ability_Skill_Warrior_Whirlwind, "Player.Ability.Skill.Warrior.Whirlwind");
+	UE_DEFINE_GAMEPLAY_TAG(Player_Ability_Skill_Warrior_HeavyStrike, "Player.Ability.Skill.Warrior.HeavyStrike");
 
-	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Cooldown_Skill_Warrior_BattleCry);
-	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Cooldown_Skill_Warrior_Charge);
-	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Cooldown_Skill_Warrior_Whirlwind);
-	PROJECT_SOUL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_Cooldown_Skill_Warrior_HeavyStrike);
+	UE_DEFINE_GAMEPLAY_TAG(Player_Cooldown_Skill_Warrior_BattleCry, "Player.Cooldown.Skill.Warrior.BattleCry");
+	UE_DEFINE_GAMEPLAY_TAG(Player_Cooldown_Skill_Warrior_Charge, "Player.Cooldown.Skill.Warrior.Charge");
+	UE_DEFINE_GAMEPLAY_TAG(Player_Cooldown_Skill_Warrior_Whirlwind, "Player.Cooldown.Skill.Warrior.Whirlwind");
+	UE_DEFINE_GAMEPLAY_TAG(Player_Cooldown_Skill_Warrior_HeavyStrike, "Player.Cooldown.Skill.Warrior.HeavyStrike");
 
 	/** Enemy Tags **/
 	UE_DEFINE_GAMEPLAY_TAG(Enemy_Ability_Melee, "Enemy.Ability.Melee");

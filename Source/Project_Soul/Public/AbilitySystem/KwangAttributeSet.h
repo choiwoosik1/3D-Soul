@@ -44,6 +44,14 @@ public:
 	FGameplayAttributeData MaxRage;
 	ATTRIBUTE_ACCESSORS(UKwangAttributeSet, MaxRage);
 
+	UPROPERTY(BlueprintReadOnly, Category = "Mana")
+	FGameplayAttributeData CurrentMana;
+	ATTRIBUTE_ACCESSORS(UKwangAttributeSet, CurrentMana);
+
+	UPROPERTY(BlueprintReadOnly, Category = "Mana")
+	FGameplayAttributeData MaxMana;
+	ATTRIBUTE_ACCESSORS(UKwangAttributeSet, MaxMana);
+
 	UPROPERTY(BlueprintReadOnly, Category = "Damage")
 	FGameplayAttributeData AttackPower;
 	ATTRIBUTE_ACCESSORS(UKwangAttributeSet, AttackPower);
