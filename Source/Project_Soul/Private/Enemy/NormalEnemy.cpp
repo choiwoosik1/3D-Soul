@@ -8,6 +8,11 @@ ANormalEnemy::ANormalEnemy()
 {
     AIControllerClass = AEnemyAIController::StaticClass();
     AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+
+	// Initialize the health bar component and attach it to the enemy's mesh, positioning it above the enemy for visibility
+	HealthBarComponent = CreateDefaultSubobject<UNormalEnemy_HealthBarComponent>(TEXT("HealthBarComponent"));
+	HealthBarComponent->SetupAttachment(GetMesh());
+	HealthBarComponent->SetRelativeLocation(FVector(0.f, 0.f, 200.f));
 }
 
 // Called when the game starts or when spawned
@@ -69,4 +74,20 @@ void ANormalEnemy::EnableRagdoll()
     GetMesh()->SetAllBodiesSimulatePhysics(true);
     GetMesh()->WakeAllRigidBodies();
     GetMesh()->SetCanEverAffectNavigation(false);
+}
+
+void ANormalEnemy::NotifyHealthBarUpdate(float NewCurrentHealth, float NewMaxHealth)
+{
+	if (HealthBarComponent)
+	{
+		HealthBarComponent->UpdateHealth(NewCurrentHealth, NewMaxHealth);
+	}
+}
+
+void ANormalEnemy::NotifyHealthBarLockOn(bool bIsLockedOn)
+{
+	if (HealthBarComponent)
+	{
+		HealthBarComponent->SetLockOnState(bIsLockedOn);
+	}
 }

@@ -14,6 +14,7 @@ public:
 	AProjectile();
 
 protected:
+	// Projectile components
     UPROPERTY(VisibleAnywhere, Category = "Components")
     class UStaticMeshComponent* MeshComponent;
 
@@ -26,6 +27,7 @@ protected:
     UPROPERTY(VisibleAnywhere, Category = "Components")
     class USceneComponent* HomingTarget;
 
+	// Projectile properties
     UPROPERTY(EditAnywhere, Category = "Combat")
     float Damage = 10.f;
 

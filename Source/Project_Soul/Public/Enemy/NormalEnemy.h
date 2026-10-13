@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Enemy/Enemy.h"
+#include "EnemyUI/NormalEnemy_HealthBarComponent.h"
 #include "NormalEnemy.generated.h"
 
 class APatrolPath;
@@ -38,13 +39,25 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Perception")
 	float HearingRange = 1000.f;
 
+
+	// UI component for health bar
+	UPROPERTY(VisibleAnywhere, Category = "UI")
+	TObjectPtr<UNormalEnemy_HealthBarComponent> HealthBarComponent;
+
+	virtual void NotifyHealthBarUpdate(float NewCurrentHealth, float NewMaxHealth) override;
+
 public:
 	// Getters for stats and state
 	class UBehaviorTree* GetBehaviorTreeAsset() const { return BTAsset; }
+
 	APatrolPath* GetPatrolPath() const { return PatrolPath; }
+
 	float GetSightRadius() const { return SightRadius; }
+
 	float GetLoseSightRadius() const { return LoseSightRadius; }
+
 	float GetFOVAngle() const { return FOVAngle; }
+
 	float GetHearingRange() const { return HearingRange; }
 
 	FVector GetNextPatrolPoint();
@@ -56,4 +69,6 @@ public:
 
 	UFUNCTION()
 	void EnableRagdoll();
+
+	virtual void NotifyHealthBarLockOn(bool bIsLockedOn) override;
 };
