@@ -10,7 +10,8 @@ AEnemy::AEnemy()
 {
     PrimaryActorTick.bCanEverTick = false;
 
-    WeaponHitbox = CreateDefaultSubobject<UBoxComponent>(TEXT("WeaponHitbox"));
+    RightWeaponHitbox = CreateDefaultSubobject<UBoxComponent>(TEXT("RightWeaponHitbox"));
+	LeftWeaponHitbox = CreateDefaultSubobject<UBoxComponent>(TEXT("LeftWeaponHitbox"));
 }
 
 // Called after the actor's components have been initialized
@@ -19,12 +20,19 @@ void AEnemy::PostInitializeComponents()
 	Super::PostInitializeComponents();
 
     // Attach the weapon hitbox to the character's weapon socket
-    WeaponHitbox->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, WeaponSocketName);
-    WeaponHitbox->SetCollisionObjectType(ECC_WorldDynamic);
-    WeaponHitbox->SetCollisionResponseToAllChannels(ECR_Ignore);
-    WeaponHitbox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-    WeaponHitbox->SetGenerateOverlapEvents(true);
-    WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    RightWeaponHitbox->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, RightWeaponSocketName);
+    RightWeaponHitbox->SetCollisionObjectType(ECC_WorldDynamic);
+    RightWeaponHitbox->SetCollisionResponseToAllChannels(ECR_Ignore);
+    RightWeaponHitbox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+    RightWeaponHitbox->SetGenerateOverlapEvents(true);
+    RightWeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+    LeftWeaponHitbox->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, LeftWeaponSocketName);
+    LeftWeaponHitbox->SetCollisionObjectType(ECC_WorldDynamic);
+    LeftWeaponHitbox->SetCollisionResponseToAllChannels(ECR_Ignore);
+    LeftWeaponHitbox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+    LeftWeaponHitbox->SetGenerateOverlapEvents(true);
+    LeftWeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 // Called when the game starts or when spawned
@@ -242,15 +250,17 @@ void AEnemy::EnableWeaponHitbox()
     // UE_LOG(LogTemp, Warning, TEXT("Pattern: %d / Attack: %d / Damage: %.1f"), PatternIdx, AttackIdx,
     //     BaseDamage * Patterns[PatternIdx].Attacks[AttackIdx].DamageMultiplier);
 
-    WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    RightWeaponHitbox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	LeftWeaponHitbox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 }
 
 // Disable the weapon hitbox after the attack ends, and record the player's dodge direction if the attack was missed
 void AEnemy::DisableWeaponHitbox()
 {
-    if (WeaponHitbox->GetCollisionEnabled() == ECollisionEnabled::NoCollision) return;
+    if (RightWeaponHitbox->GetCollisionEnabled() == ECollisionEnabled::NoCollision) return;
 
-    WeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    RightWeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	LeftWeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
     // Record player dodge vector if the attack was missed
     if ((AlreadyHitActors.Num() <= 0) && Patterns[PatternIdx].Attacks[AttackIdx].MovementSpeed > 0)
@@ -500,5 +510,19 @@ void AEnemy::Die()
     if (AIC)
     {
         AIC->Destroy();
+	}
+
+    if (RightWeaponMesh)
+    {
+        RightWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+        RightWeaponMesh->SetSimulatePhysics(true);
+        RightWeaponMesh->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+    }
+
+	if (LeftWeaponMesh)
+	{
+		LeftWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+		LeftWeaponMesh->SetSimulatePhysics(true);
+		LeftWeaponMesh->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 	}
 }

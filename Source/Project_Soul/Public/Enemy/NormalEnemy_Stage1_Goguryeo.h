@@ -21,6 +21,4 @@ protected:
 	virtual void DecideNextAction() override;
 
 	virtual void FireProjectile_Implementation() override;
-
-	virtual void Die() override;
 };

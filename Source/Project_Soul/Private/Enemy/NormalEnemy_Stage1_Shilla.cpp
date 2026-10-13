@@ -1,0 +1,50 @@
+#include "Enemy/NormalEnemy_Stage1_Shilla.h"
+#include "Components/BoxComponent.h"
+#include "Delegates/Delegate.h"
+#include "AIController.h"
+
+// Sets default values
+ANormalEnemy_Stage1_Shilla::ANormalEnemy_Stage1_Shilla()
+{
+	RightWeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RightWeaponMesh"));
+}
+
+// Called after the actor's components have been initialized
+void ANormalEnemy_Stage1_Shilla::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	// Attach the weapon mesh to the character's hand socket
+	RightWeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, RightWeaponSocketName);
+	RightWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Shilla::OnWeaponHitboxOverlap);
+}
+
+// Base decision logic for enemy's next action
+void ANormalEnemy_Stage1_Shilla::DecideNextAction()
+{
+	if (CharacterState != EEnemyState::InCombat) return;
+
+	AAIController* AIC = Cast<AAIController>(GetController());
+	if (!AIC) return;
+
+	AActor* Target = Cast<AActor>(AIC->GetFocusActor());
+	if (!Target) return;
+
+	float Distance = FVector::Dist(GetActorLocation(), Target->GetActorLocation());
+
+	// Find valid attack patterns based on distance to the target
+	TArray<int32> ValidAttackPatterns;
+	for (int32 i = 0; i < Patterns.Num(); i++)
+	{
+		if (Distance <= Patterns[i].AttackRange)
+			ValidAttackPatterns.Add(i);
+	}
+
+	// If there are valid attack patterns, randomly select one and perform the attack
+	if (ValidAttackPatterns.Num() > 0)
+	{
+		int32 SelectedIdx = ValidAttackPatterns[FMath::RandRange(0, ValidAttackPatterns.Num() - 1)];
+		PerformAttackPattern(SelectedIdx);
+		return;
+	}
+}

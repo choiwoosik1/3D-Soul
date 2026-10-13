@@ -6,7 +6,7 @@
 // Sets default values
 ANormalEnemy_Stage1_Baekje::ANormalEnemy_Stage1_Baekje()
 {
-	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
+	RightWeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RightWeaponMesh"));
 }
 
 // Called after the actor's components have been initialized
@@ -15,8 +15,8 @@ void ANormalEnemy_Stage1_Baekje::PostInitializeComponents()
 	Super::PostInitializeComponents();
 
 	// Attach the weapon mesh to the character's hand socket
-	WeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, WeaponSocketName);
-	WeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Baekje::OnWeaponHitboxOverlap);
+	RightWeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, RightWeaponSocketName);
+	RightWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Baekje::OnWeaponHitboxOverlap);
 }
 
 // Base decision logic for enemy's next action
@@ -46,18 +46,5 @@ void ANormalEnemy_Stage1_Baekje::DecideNextAction()
 		int32 SelectedIdx = ValidAttackPatterns[FMath::RandRange(0, ValidAttackPatterns.Num() - 1)];
 		PerformAttackPattern(SelectedIdx);
 		return;
-	}
-}
-
-// Handle death logic, detaching the weapon and enabling physics simulation for a more dynamic death effect
-void ANormalEnemy_Stage1_Baekje::Die()
-{
-	Super::Die();
-
-	if (WeaponMesh)
-	{
-		WeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-		WeaponMesh->SetSimulatePhysics(true);
-		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 	}
 }

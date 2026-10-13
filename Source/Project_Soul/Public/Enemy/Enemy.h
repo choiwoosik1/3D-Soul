@@ -61,13 +61,22 @@ protected:
 
 	// Weapon properties
 	UPROPERTY(EditAnywhere, Category = "Weapon")
-	UMeshComponent* WeaponMesh = nullptr;
+	UMeshComponent* RightWeaponMesh = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Weapon")
-	UBoxComponent* WeaponHitbox;
+	UBoxComponent* RightWeaponHitbox;
 
 	UPROPERTY(EditAnywhere, Category = "Weapon")
-	FName WeaponSocketName = TEXT("HandGrip_R");
+	FName RightWeaponSocketName = TEXT("HandGrip_R");
+
+	UPROPERTY(EditAnywhere, Category = "Weapon")
+	UMeshComponent* LeftWeaponMesh = nullptr;
+
+	UPROPERTY(EditAnywhere, Category = "Weapon")
+	UBoxComponent* LeftWeaponHitbox;
+
+	UPROPERTY(EditAnywhere, Category = "Weapon")
+	FName LeftWeaponSocketName = TEXT("HandGrip_L");
 				
 	// Poise system
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Poise")
