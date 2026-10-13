@@ -30,6 +30,9 @@
 // Sets default values
 AKwangHeroCharacters::AKwangHeroCharacters()
 {
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = true;
+
 	// 1. 캐릭터의 물리 충돌 영역(캡슐) 크기 세팅 (반지름 42, 절반 높이 96)
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.f);
 
