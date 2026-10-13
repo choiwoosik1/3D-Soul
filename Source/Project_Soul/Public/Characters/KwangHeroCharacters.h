@@ -49,6 +49,8 @@ protected:
 	// virtual : 부모 클래스의 원본 함수가 있지만 현재 클래스 상황에 맞게 고침
 	virtual void BeginPlay() override;
 
+	virtual void Tick(float DeltaTime) override;
+
 private:
 	// #pragma region: Visual Studio에서 코드를 접었다 펼칠 수 있게 해주는 단순 UI 기능
 #pragma region Components
@@ -126,6 +128,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Block")
 	TSubclassOf<UGameplayEffect> HeavyGuardBrokenEffectClass;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GuardBreak")
+	TSubclassOf<UGameplayEffect> RageResetEffectClass;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Block")
 	UAnimMontage* GuardBrokenMontage;
 
@@ -137,8 +142,16 @@ public:
 
 private:
 	bool bIsInvincible = false;
-
 	FTimerHandle GuardBrokenMontageTimerHandle;
+
+	void UpdateBlockRotation(float DeltaTime);
+	AActor* FindNearestEnemy(float SearchRadius) const;
+
+	UPROPERTY(EditAnywhere, Category = "Block")
+	float BlockRotationInterpSpeed = 10.f;
+
+	UPROPERTY(EditAnywhere, Category = "Block")
+	float BlockEnemySearchRadius = 1500.f;
 };
 #pragma endregion
 

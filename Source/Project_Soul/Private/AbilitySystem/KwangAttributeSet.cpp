@@ -19,6 +19,8 @@ UKwangAttributeSet::UKwangAttributeSet()
 	InitMaxHealth(1.f);
 	InitCurrentRage(1.f);
 	InitMaxRage(1.f);
+	InitCurrentMana(1.f);
+	InitMaxMana(1.f);
 	InitAttackPower(1.f);
 	InitDefensePower(1.f);
 }
@@ -66,6 +68,18 @@ void UKwangAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 					HeroCharacter->TriggerGuardBreak(false);
 				}
 			}                                              
+		}
+	}
+
+	if (Data.EvaluatedData.Attribute == GetCurrentManaAttribute())
+	{
+		const float NewCurrentMana = FMath::Clamp(GetCurrentMana(), 0.f, GetMaxMana());
+
+		SetCurrentMana(NewCurrentMana);
+
+		if (UHeroUIComponent* HeroUIComponent = CachedPawnUIInterface->GetHeroUIComponent())
+		{
+			HeroUIComponent->OnCurrentManaChanged.Broadcast(GetCurrentMana() / GetMaxMana());
 		}
 	}
 
