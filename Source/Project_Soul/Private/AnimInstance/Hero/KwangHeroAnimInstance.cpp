@@ -17,6 +17,8 @@ void UKwangHeroAnimInstance::NativeInitializeAnimation()
 		// 3. 그 캐릭터가 우리 가문 사람(Hero)이 맞는지 다시 한번 정밀 검사(Cast)를 해서 전용 변수에 넣음
 		OwningHeroCharacter = Cast<AKwangHeroCharacters>(OwningCharacter);
 	}
+
+	HitStunTag = FGameplayTag::RequestGameplayTag(FName("Player.Status.HitStun"), false);
 }
 
 void UKwangHeroAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
@@ -41,15 +43,19 @@ void UKwangHeroAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
 	UAbilitySystemComponent* ASC = OwningHeroCharacter->GetAbilitySystemComponent();
 
 	bool bIsAttacking = false;
+	bool bIsHitStunned = false;
 	if (ASC != nullptr)
 	{
 		// 가벼운 공격이나 무거운 공격 중 하나라도 수행 중인지 확인
 		bIsAttacking = ASC->HasMatchingGameplayTag(KwangGameplayTags::Player_Ability_Attack_Light_Sword) ||
 			ASC->HasMatchingGameplayTag(KwangGameplayTags::Player_Ability_Attack_Heavy_Sword);
+
+		// 피격 경직 중인지 확인
+		bIsHitStunned = HitStunTag.IsValid() && ASC->HasMatchingGameplayTag(HitStunTag);
 	}
 
-	// 2. 만약 캐릭터가 움직이고 있다면? (가속도가 있다면)
-	if (bHasAcceleration || bIsAttacking)
+	// 2. 움직이거나 공격 중이거나 피격 경직 중이면
+	if (bHasAcceleration || bIsAttacking || bIsHitStunned)
 	{
 		// 스톱워치(대기 시간)를 0초로 초기화
 		IdleElpasedTime = 0.f;
@@ -57,16 +63,11 @@ void UKwangHeroAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
 		// 현재 움직이는 상태이니 RelaxMode를 false라고 블루프린트에 알립
 		bShouldEnterRelaxState = false;
 		bShouldEnterDeepBreathState = false;
-
 	}
 	else
 	{
-		// DeltaSeconds(1프레임당 걸린 시간, 보통 0.016초)를 스톱워치에 계속 더해줌
-		// 즉, 현실 시간으로 스톱워치가 굴러감
 		IdleElpasedTime += DeltaSeconds;
 
-		// 누적된 스톱워치 시간이 5초(Threshold)를 넘었는지 검사
-		// 5초를 넘겼다면 결과가 true가 되어 블루프린트에서 릴렉스 애니메이션으로 넘어감
 		bShouldEnterRelaxState = (IdleElpasedTime >= EnterRelaxStateThreshold);
 		bShouldEnterDeepBreathState = (IdleElpasedTime >= EnterDeepBreathStateThreshold);
 	}
