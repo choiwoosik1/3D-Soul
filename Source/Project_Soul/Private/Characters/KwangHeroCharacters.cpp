@@ -153,7 +153,11 @@ void AKwangHeroCharacters::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 // 키보드(WASD)를 누를 때마다 실제로 실행될 이동 콜백 함수
 void AKwangHeroCharacters::Input_Move(const FInputActionValue& InputActionValue)
 {
-	if (UKwangFunctionLibrary::NativeDoesActorHaveTag(this, KwangGameplayTags::Player_Status_GuardBroken))
+	// 피격 경직 태그
+	static const FGameplayTag HitStunTag = FGameplayTag::RequestGameplayTag(FName("Player.Status.HitStun"));
+
+	if (UKwangFunctionLibrary::NativeDoesActorHaveTag(this, KwangGameplayTags::Player_Status_GuardBroken)
+		|| UKwangFunctionLibrary::NativeDoesActorHaveTag(this, HitStunTag))
 	{
 		return;
 	}
