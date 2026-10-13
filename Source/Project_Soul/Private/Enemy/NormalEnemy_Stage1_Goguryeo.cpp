@@ -8,7 +8,7 @@
 // Sets default values
 ANormalEnemy_Stage1_Goguryeo::ANormalEnemy_Stage1_Goguryeo()
 {
-	WeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponMesh"));
+	LeftWeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("LeftWeaponMesh"));
 }
 
 // Called after the actor's components have been initialized
@@ -17,8 +17,8 @@ void ANormalEnemy_Stage1_Goguryeo::PostInitializeComponents()
 	Super::PostInitializeComponents();
 
 	// Attach the weapon mesh to the character's hand socket
-	WeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, WeaponSocketName);
-	WeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Goguryeo::OnWeaponHitboxOverlap);
+	LeftWeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, LeftWeaponSocketName);
+	LeftWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Goguryeo::OnWeaponHitboxOverlap);
 }
 
 // Base decision logic for enemy's next action
@@ -63,8 +63,8 @@ void ANormalEnemy_Stage1_Goguryeo::FireProjectile_Implementation()
 {
 	if (!ProjectileClass) return;
 
-	FVector MuzzleLocation = WeaponMesh->GetSocketLocation(MuzzleSocketName);
-	FRotator FireRotation = WeaponMesh->GetSocketRotation(MuzzleSocketName);
+	FVector MuzzleLocation = LeftWeaponMesh->GetSocketLocation(MuzzleSocketName);
+	FRotator FireRotation = LeftWeaponMesh->GetSocketRotation(MuzzleSocketName);
 
 	AAIController* AIC = Cast<AAIController>(GetController());
 	if (AIC && AIC->GetFocusActor())
@@ -109,18 +109,5 @@ void ANormalEnemy_Stage1_Goguryeo::FireProjectile_Implementation()
 			ProjectileMovement->SetVelocityInLocalSpace(FVector::ForwardVector * ProjectileMovement->InitialSpeed);
 			ProjectileMovement->Activate();
 		}
-	}
-}
-
-// Handle death logic, detaching the weapon and enabling physics simulation for a more dynamic death effect
-void ANormalEnemy_Stage1_Goguryeo::Die()
-{
-	Super::Die();
-
-	if (WeaponMesh)
-	{
-		WeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-		WeaponMesh->SetSimulatePhysics(true);
-		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 	}
 }
