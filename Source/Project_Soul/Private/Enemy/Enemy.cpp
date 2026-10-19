@@ -262,6 +262,8 @@ void AEnemy::DisableWeaponHitbox()
     RightWeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	LeftWeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
+    if (!Patterns.IsValidIndex(PatternIdx)) return;
+
     // Record player dodge vector if the attack was missed
     if ((AlreadyHitActors.Num() <= 0) && Patterns[PatternIdx].Attacks[AttackIdx].MovementSpeed > 0)
     {
@@ -357,7 +359,7 @@ void AEnemy::EnableAttackMovement()
         // Add predicted player dodge location
         TargetLocation += GetActorTransform().TransformVectorNoScale(PlayerActionRecord.GetCorrectedOffset());
 
-        AIC->MoveToLocation(TargetLocation);        
+        AIC->MoveToLocation(TargetLocation, MinCombatRange);       
     }
 }
 
