@@ -46,7 +46,8 @@ void AEnemy_Boss_Stage1::BeginPlay()
 
 void AEnemy_Boss_Stage1::StartBossFight()
 {
-	ResumeCombat();
+	PlayAnimMontage(CombatMontage);
+	SetCharacterState(EEnemyState::Attack);
 
 	if (!BossHealthBarClass || BossHealthBarWidget) return;
 
@@ -58,6 +59,18 @@ void AEnemy_Boss_Stage1::StartBossFight()
 	BossHealthBarWidget->SetBossName(BossDisplayName);
 	BossHealthBarWidget->SetHealthPercent(MaxHealth > 0.f ? CurrentHealth / MaxHealth : 0.f);
 	BossHealthBarWidget->AddToViewport();
+
+	AAIController* AIC = Cast<AAIController>(GetController());
+	APawn* Player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	if (!AIC || !Player) return;
+
+	AIC->SetFocus(Player);
+
+	if (UBlackboardComponent* BBComp = AIC->GetBlackboardComponent())
+	{
+		BBComp->SetValueAsObject(FName("TargetActor"), Player);
+		BBComp->SetValueAsBool(FName("IsInAction"), true);
+	}
 }
 
 void AEnemy_Boss_Stage1::EndBossFight()

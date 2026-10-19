@@ -17,6 +17,7 @@ void ANormalEnemy_Stage1_Shilla::PostInitializeComponents()
 	// Attach the weapon mesh to the character's hand socket
 	RightWeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, RightWeaponSocketName);
 	RightWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Shilla::OnWeaponHitboxOverlap);
+	LeftWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Shilla::OnWeaponHitboxOverlap);
 }
 
 // Base decision logic for enemy's next action
