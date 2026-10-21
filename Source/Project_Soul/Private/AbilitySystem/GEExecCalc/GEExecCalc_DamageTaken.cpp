@@ -139,7 +139,7 @@ void UGEExecCalc_DamageTaken::Execute_Implementation(const FGameplayEffectCustom
     // 1ÄÞº¸: 1.15¹è, 2ÄÞº¸: 1.30¹è ...
     if (UsedHeavyAttackComboCount != 0)
     {
-        const float DamageIncreasePercentHeavy = UsedHeavyAttackComboCount * 0.15f + 1.f;
+        const float DamageIncreasePercentHeavy = UsedHeavyAttackComboCount * 0.25f + 1.f;
 
         BaseDamage *= DamageIncreasePercentHeavy;
         //Debug::Print(TEXT("ScaledBaseDamageHeavy"), BaseDamage);
