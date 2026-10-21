@@ -192,10 +192,10 @@ public:
 	void FinishAttackPattern();
 
 	UFUNCTION(BlueprintCallable)
-	void EnableWeaponHitbox();
+	virtual void EnableWeaponHitbox();
 
 	UFUNCTION(BlueprintCallable)
-	void DisableWeaponHitbox();
+	virtual void DisableWeaponHitbox();
 
 	UFUNCTION()
 	void OnWeaponHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, 
