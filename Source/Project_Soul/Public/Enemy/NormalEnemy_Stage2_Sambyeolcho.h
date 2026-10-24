@@ -16,4 +16,7 @@ protected:
 	virtual void PostInitializeComponents() override;
 
 	virtual void DecideNextAction() override;
+
+	UFUNCTION(BlueprintCallable)
+	void EnableBackFlip();
 };

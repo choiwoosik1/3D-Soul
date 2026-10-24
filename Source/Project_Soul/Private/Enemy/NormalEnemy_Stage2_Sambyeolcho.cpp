@@ -1,4 +1,5 @@
 #include "Enemy/NormalEnemy_Stage2_Sambyeolcho.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Components/BoxComponent.h"
 #include "Delegates/Delegate.h"
 #include "AIController.h"
@@ -23,4 +24,18 @@ void ANormalEnemy_Stage2_Sambyeolcho::PostInitializeComponents()
 void ANormalEnemy_Stage2_Sambyeolcho::DecideNextAction()
 {
 	Super::DecideNextAction();
+}
+
+// Enables the backflip movement for the enemy character
+void ANormalEnemy_Stage2_Sambyeolcho::EnableBackFlip()
+{
+    AAIController* AIC = Cast<AAIController>(GetController());
+    if (!AIC || !AIC->GetFocusActor()) return;
+
+	GetCharacterMovement()->MaxWalkSpeed = 400.f;
+
+    FVector PlayerLocation = AIC->GetFocusActor()->GetActorLocation();
+	FVector TargetLocation = GetActorLocation() - (PlayerLocation - GetActorLocation()).GetSafeNormal() * 300.f;
+
+    AIC->MoveToLocation(TargetLocation);
 }
