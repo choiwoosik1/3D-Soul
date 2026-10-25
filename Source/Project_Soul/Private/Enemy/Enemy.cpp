@@ -286,7 +286,7 @@ void AEnemy::DisableWeaponHitbox()
     RightWeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	LeftWeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    if (!Patterns.IsValidIndex(PatternIdx)) return;
+    if (!Patterns.IsValidIndex(PatternIdx) || !Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
 
     // Record player dodge vector if the attack was missed
     if ((AlreadyHitActors.Num() <= 0) && Patterns[PatternIdx].Attacks[AttackIdx].MovementSpeed > 0)
