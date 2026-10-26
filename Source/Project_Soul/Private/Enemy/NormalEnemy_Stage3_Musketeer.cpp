@@ -8,7 +8,7 @@
 // Sets default values
 ANormalEnemy_Stage3_Musketeer::ANormalEnemy_Stage3_Musketeer()
 {
-	RightWeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("RightWeaponMesh"));
+	LeftWeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("LeftWeaponMesh"));
 }
 
 // Called after the actor's components have been initialized
@@ -17,8 +17,8 @@ void ANormalEnemy_Stage3_Musketeer::PostInitializeComponents()
 	Super::PostInitializeComponents();
 
 	// Attach the weapon mesh to the character's hand socket
-	RightWeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, RightWeaponSocketName);
-	RightWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage3_Musketeer::OnWeaponHitboxOverlap);
+	LeftWeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, LeftWeaponSocketName);
+	LeftWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage3_Musketeer::OnWeaponHitboxOverlap);
 }
 
 // Base decision logic for enemy's next action
@@ -34,12 +34,12 @@ void ANormalEnemy_Stage3_Musketeer::DecideNextAction()
 
 	float Distance = FVector::Dist(GetActorLocation(), Target->GetActorLocation());
 
-	// If the target is within the melee attack pattern's range, perform that attack immediately
+	/* If the target is within the melee attack pattern's range, perform that attack immediately
 	if (Distance <= Patterns[1].AttackRange)
 	{
 		PerformAttackPattern(1);
 		return;
-	}
+	}*/
 
 	// Find valid attack patterns based on distance to the target
 	TArray<int32> ValidAttackPatterns;
@@ -106,7 +106,7 @@ void ANormalEnemy_Stage3_Musketeer::FireProjectile_Implementation()
 		UProjectileMovementComponent* ProjectileMovement = Projectile->FindComponentByClass<UProjectileMovementComponent>();
 		if (ProjectileMovement)
 		{
-			ProjectileMovement->SetVelocityInLocalSpace(FVector::ForwardVector * ProjectileMovement->InitialSpeed);
+			ProjectileMovement->SetVelocityInLocalSpace(FVector::ForwardVector * ProjectileSpeed);
 			ProjectileMovement->Activate();
 		}
 	}
