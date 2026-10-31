@@ -35,6 +35,7 @@ namespace KwangGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Player_Cooldown_Roll, "Player.Cooldown.Roll");
 
 	UE_DEFINE_GAMEPLAY_TAG(Player_Status_Rolling, "Player.Status.Rolling");
+	UE_DEFINE_GAMEPLAY_TAG(Player_Status_Rolling_Strafe, "Player.Status.Rolling.Strafe");
 	UE_DEFINE_GAMEPLAY_TAG(Player_Status_Blocking, "Player.Status.Blocking");
 	UE_DEFINE_GAMEPLAY_TAG(Player_Status_TargetLock, "Player.Status.TargetLock");
 	UE_DEFINE_GAMEPLAY_TAG(Player_Status_Parrying, "Player.Status.Parrying");

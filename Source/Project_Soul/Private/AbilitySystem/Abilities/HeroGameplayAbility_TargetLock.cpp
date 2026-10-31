@@ -52,7 +52,9 @@ void UHeroGameplayAbility_TargetLock::OnTargetLockTick(float DeltaTime)
 
 	SetTargetLockWidgetPosition();
 
-	const bool bIsRolling = UKwangFunctionLibrary::NativeDoesActorHaveTag(GetHeroCharacterFromActorInfo(), KwangGameplayTags::Player_Status_Rolling);
+	const bool bIsRolling =
+		UKwangFunctionLibrary::NativeDoesActorHaveTag(GetHeroCharacterFromActorInfo(), KwangGameplayTags::Player_Status_Rolling) &&
+		!UKwangFunctionLibrary::NativeDoesActorHaveTag(GetHeroCharacterFromActorInfo(), KwangGameplayTags::Player_Status_Rolling_Strafe);
 	const bool bIsBlocking = UKwangFunctionLibrary::NativeDoesActorHaveTag(GetHeroCharacterFromActorInfo(), KwangGameplayTags::Player_Status_Blocking);
 
 	// 구르는 중에는 회전 간섭 안 함
