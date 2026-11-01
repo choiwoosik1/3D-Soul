@@ -73,3 +73,20 @@ Plugins/**/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+
+Content/EnemyAsset/*
+Content/MapAssets/*
+
+!Content/MapAssets/Soswaewon/
+!Content/MapAssets/Naganeupseong/
+!Content/MapAssets/HouseOfChangwon/
+!Content/MapAssets/DongraeHyanggyo/
+!Content/MapAssets/Tomb_of_Silla/
+!Content/MapAssets/StonePagoda/
+!Content/MapAssets/TemplesKor/
+!Content/MapAssets/SeongjeonggakComplex/
+!Content/MapAssets/Daejojeon/
+!Content/MapAssets/HyangwonjeongComplex/
+!Content/MapAssets/HwaseongHaenggung/
+!Content/MapAssets/Gyeonghoeru/
+!Content/MapAssets/Kwalnaegaksa/
