@@ -92,14 +92,14 @@ void UKwangAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 
 		SetCurrentHealth(NewCurrentHealth);
 
-		const FString DebugString = FString::Printf(
+		/*const FString DebugString = FString::Printf(
 			TEXT("Old Healtfh : %f, Damage Done : %f, NewCurrentHealth : %f"),
 			OldHealth,
 			DamageDone,
 			NewCurrentHealth
 		);
 
-		Debug::Print(DebugString, FColor::Green);
+		Debug::Print(DebugString, FColor::Green);*/
 
 		PawnUIComponent->OnCurrentHealthChanged.Broadcast(GetCurrentHealth() / GetMaxHealth());
 

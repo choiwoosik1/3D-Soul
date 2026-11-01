@@ -527,6 +527,8 @@ void AEnemy::Die()
     SetCharacterState(EEnemyState::Dead);
     InterruptCurrentAttack();
 
+    OnEnemyDied.Broadcast(this);
+
     if (DeathMontage)
     {
         PlayAnimMontage(DeathMontage);

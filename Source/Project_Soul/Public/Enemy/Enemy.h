@@ -6,6 +6,9 @@
 #include "Enemy/EnemyTypes.h"
 #include "Enemy.generated.h"
 
+class AEnemy;
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnEnemyDied, AEnemy*, DeadEnemy);
+
 // Enemy character class
 UCLASS()
 class PROJECT_SOUL_API AEnemy : public ACharacter
@@ -156,6 +159,9 @@ protected:
 	virtual void NotifyHealthBarUpdate(float NewCurrentHealth, float NewMaxHealth) {}
 
 public:
+	UPROPERTY(BlueprintAssignable)
+	FOnEnemyDied OnEnemyDied;
+
 	EEnemyState GetCharacterState() const { return CharacterState; }
 
 	FPlayerActionRecord& GetPlayerActionRecord() { return PlayerActionRecord; }
