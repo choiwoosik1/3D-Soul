@@ -146,18 +146,22 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
 
     float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
+    if (bIsInvincible) return 0.f;
+
     // Apply backstab or critical hit multipliers if applicable, and reset the flags
     if (bBackstabbed)
     {
         if (DamageCauser != AttackInitiator) return 0.f;
         ActualDamage *= BackstabMultiplier;
-        bBackstabbed = false;;
+        bBackstabbed = false;
+        bIsInvincible = true;
     }
     else if (bCriticalHit)
     {
         if (DamageCauser != AttackInitiator) return 0.f;
         ActualDamage *= CriticalHitMultiplier;
         bCriticalHit = false;
+        bIsInvincible = true;
     }
 
     // Reduce health by the actual damage amount
@@ -463,6 +467,8 @@ void AEnemy::ExitGroggy()
 {
     if (CharacterState != EEnemyState::Groggy) return;
 
+    FTimerHandle InvincibleTimerHandle;
+    GetWorldTimerManager().SetTimer(InvincibleTimerHandle, this, &AEnemy::DisableInvincible, 0.3f, false);
     LimitPoise = MaxPoise;
     CurrentPoise = LimitPoise;
     ResumeCombat();
@@ -471,6 +477,8 @@ void AEnemy::ExitGroggy()
 // Handle being backstabbed, applying backstab multiplier
 void AEnemy::GetBackstabbed(AActor* Attacker)
 {
+    if (bIsInvincible) return;
+
     SetCharacterState(EEnemyState::Groggy);
 	CurrentPoise = 0.f;
     bBackstabbed = true;
@@ -490,6 +498,8 @@ void AEnemy::GetBackstabbed(AActor* Attacker)
 // Handle being critically hit, applying critical hit multiplier
 void AEnemy::GetCriticalHit(AActor* Attacker)
 {
+	if (bIsInvincible) return;
+
     SetCharacterState(EEnemyState::Groggy);
 	CurrentPoise = 0.f;
 	bCriticalHit = true;

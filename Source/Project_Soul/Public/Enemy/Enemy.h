@@ -48,6 +48,9 @@ protected:
 	float CriticalHitMultiplier = 3.f;
 
 	UPROPERTY(VisibleAnywhere, Category = "Combat")
+	bool bIsInvincible = false;
+
+	UPROPERTY(VisibleAnywhere, Category = "Combat")
 	AActor* AttackInitiator = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
@@ -157,6 +160,8 @@ protected:
 	void SetCharacterState(EEnemyState NewState);
 
 	void InterruptCurrentAttack();
+
+	void DisableInvincible() { bIsInvincible = false; }
 
 	virtual void NotifyHealthBarUpdate(float NewCurrentHealth, float NewMaxHealth) {}
 
