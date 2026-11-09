@@ -1,7 +1,8 @@
 #include "Enemy/Enemy.h"
+#include "Enemy/EnemyDamageTypes.h"
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
-#include "Enemy/EnemyDamageTypes.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -52,6 +53,8 @@ void AEnemy::BeginPlay()
     GetCharacterMovement()->bOrientRotationToMovement = false;
     GetCharacterMovement()->bUseControllerDesiredRotation = true;
     bUseControllerRotationYaw = false;
+
+	InitialTransform = GetActorTransform();
 }
 
 // Update the character's state and adjust movement and blackboard values accordingly
@@ -553,4 +556,58 @@ void AEnemy::Die()
 		LeftWeaponMesh->SetSimulatePhysics(true);
 		LeftWeaponMesh->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 	}
+}
+
+// Reset the enemy to its initial state, clearing timers, stopping animations, restoring health and poise, and respawning the controller
+void AEnemy::ResetToInitialState()
+{
+	GetWorldTimerManager().ClearAllTimersForObject(this);
+    InterruptCurrentAttack();
+
+	if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
+	{
+		Anim->StopAllMontages(0.f);
+	}
+
+    // Class defaults hold the original values of every default subobject
+    const AEnemy* Default = GetClass()->GetDefaultObject<AEnemy>();
+
+    // Undo ragdoll (EnableRagdoll)
+    GetMesh()->SetSimulatePhysics(false);
+    GetMesh()->SetCollisionProfileName(Default->GetMesh()->GetCollisionProfileName());
+    GetCapsuleComponent()->SetCollisionProfileName(Default->GetCapsuleComponent()->GetCollisionProfileName());
+    GetMesh()->SetCanEverAffectNavigation(Default->GetMesh()->CanEverAffectNavigation());
+    GetMesh()->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+    GetMesh()->SetRelativeTransform(Default->GetMesh()->GetRelativeTransform());
+
+    // Undo weapon drop (Die)
+    auto RestoreWeapon = [&](UPrimitiveComponent* Weapon, const UPrimitiveComponent* DefaultWeapon, FName Socket)
+        {
+            if (!Weapon || !DefaultWeapon) return;
+
+            Weapon->SetSimulatePhysics(false);
+            Weapon->SetCollisionProfileName(DefaultWeapon->GetCollisionProfileName());
+            Weapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, Socket);
+            Weapon->SetRelativeTransform(DefaultWeapon->GetRelativeTransform());
+        };
+    RestoreWeapon(RightWeaponMesh, Default->RightWeaponMesh, RightWeaponSocketName);
+    RestoreWeapon(LeftWeaponMesh, Default->LeftWeaponMesh, LeftWeaponSocketName);
+
+    GetCharacterMovement()->StopMovementImmediately();
+    GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+    SetActorTransform(InitialTransform, false, nullptr, ETeleportType::ResetPhysics);
+    
+    CurrentHealth = MaxHealth;
+    LimitPoise = MaxPoise;
+    CurrentPoise = LimitPoise;
+    SetCharacterState(EEnemyState::Idle);
+
+    // A fresh controller restarts BT, blackboard and perception from scratch
+    if (AController* OldController = GetController())
+    {
+        OldController->Destroy();
+    }
+    SpawnDefaultController();
+
+    NotifyHealthBarUpdate(CurrentHealth, MaxHealth);
 }
