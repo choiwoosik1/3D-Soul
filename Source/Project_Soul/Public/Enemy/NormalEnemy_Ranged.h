@@ -4,6 +4,7 @@
 #include "Enemy/NormalEnemy.h"
 #include "NormalEnemy_Ranged.generated.h"
 
+// Ranged enemy class, capable of firing projectiles at the player
 UCLASS()
 class PROJECT_SOUL_API ANormalEnemy_Ranged : public ANormalEnemy
 {
