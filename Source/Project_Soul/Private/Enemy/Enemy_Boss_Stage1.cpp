@@ -33,19 +33,27 @@ void AEnemy_Boss_Stage1::PostInitializeComponents()
 void AEnemy_Boss_Stage1::BeginPlay()
 {
 	Super::BeginPlay();
+	StartBehavior();
+}
 
+// Update the character's state and adjust movement and blackboard values accordingly
+void AEnemy_Boss_Stage1::StartBehavior()
+{
 	// Initialize the behavior tree and update combat range values in the blackboard
 	AAIController* AIC = Cast<AAIController>(GetController());
 	AIC->RunBehaviorTree(BTAsset);
 	AIC->GetBlackboardComponent()->SetValueAsFloat(FName("MinCombatRange"), MinCombatRange);
 	AIC->GetBlackboardComponent()->SetValueAsFloat(FName("MaxCombatRange"), MaxCombatRange);
-	
+
 	// Start a timer to continuously update the boss's movement speed based on the player's distance
 	GetWorldTimerManager().SetTimer(UpdateDistanceTimerHandle, this, &AEnemy_Boss_Stage1::UpdateDistance, 0.1f, true);
 }
 
+// Called when the boss fight starts, initializing the health bar and setting up the AI controller's focus and blackboard values
 void AEnemy_Boss_Stage1::StartBossFight()
 {
+	if (CharacterState != EEnemyState::Idle) return;
+
 	PlayAnimMontage(CombatMontage);
 	SetCharacterState(EEnemyState::Attack);
 
@@ -73,6 +81,7 @@ void AEnemy_Boss_Stage1::StartBossFight()
 	}
 }
 
+// Called when the boss fight ends, removing the health bar and stopping the behavior tree
 void AEnemy_Boss_Stage1::EndBossFight()
 {
 	if (BossHealthBarWidget)
@@ -82,6 +91,7 @@ void AEnemy_Boss_Stage1::EndBossFight()
 	}
 }
 
+// Update the boss's health bar based on the current health and end the fight if health reaches zero
 void AEnemy_Boss_Stage1::NotifyHealthBarUpdate(float NewCurrentHealth, float NewMaxHealth)
 {
 	if (!BossHealthBarWidget) return;
@@ -129,4 +139,23 @@ void AEnemy_Boss_Stage1::ResumeCombat()
 	{
 		BBComp->SetValueAsObject(FName("TargetActor"), Player);
 	}
+}
+
+// Reset the boss to its initial state, ending the fight and restarting behavior
+void AEnemy_Boss_Stage1::ResetToInitialState()
+{
+	EndBossFight();
+	Super::ResetToInitialState();
+	StartBehavior();
+}
+
+// Handle death, ending the boss fight and performing base death logic
+void AEnemy_Boss_Stage1::Die()
+{
+	Super::Die();
+
+	EndBossFight();
+
+	float Duration = DeathMontage->GetPlayLength();
+	SetLifeSpan(FMath::Max(Duration, 0.1f));
 }

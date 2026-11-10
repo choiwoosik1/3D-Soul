@@ -11,8 +11,8 @@ AProjectile::AProjectile()
 
 	// Set up the collision component as the root component
     CollisionComponent = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionComponent"));
-    CollisionComponent->SetBoxExtent(FVector(15.f, 15.f, 15.f));
-    CollisionComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    CollisionComponent->SetBoxExtent(FVector(55.f, 5.f, 5.f));
+    CollisionComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     RootComponent = CollisionComponent;
 
 	// Set up the mesh component for visual representation
@@ -40,7 +40,7 @@ void AProjectile::BeginPlay()
 
     // Ignore the instigator and bind the hit event
 	CollisionComponent->IgnoreActorWhenMoving(GetInstigator(), true);
-    CollisionComponent->OnComponentHit.AddDynamic(this, &AProjectile::OnHit);
+    CollisionComponent->OnComponentBeginOverlap.AddDynamic(this, &AProjectile::OnOverlapBegin);
 
 	// Create a homing target component and set it to the player's location
     APawn* Player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
@@ -100,14 +100,13 @@ void AProjectile::Tick(float DeltaTime)
     }
 }
 
-// Handle hit events, applying damage to valid targets and destroying the projectile on impact
-void AProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
-    UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+// Handle projectile overlap with other actors, applying damage and destroying the projectile
+void AProjectile::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	// Ignore hits with other enemies, and destroy the projectile on impact
-    if (!OtherActor || Cast<AEnemy>(OtherActor)) 
+    // Ignore other enemies
+    if (Cast<AEnemy>(OtherActor)) 
     {
-        Destroy();
         return;
     }
 
@@ -116,4 +115,11 @@ void AProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
     UE_LOG(LogTemp, Warning, TEXT("Hit: %s / Damage: %.1f"), *OtherActor->GetName(), Damage);
 
     Destroy();
+}
+
+// Handle hit events, destroying the projectile upon impact
+void AProjectile::OnHit(UPrimitiveComponent* HitCombp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex, FVector NormalImpulse, const FHitResult& Hit)
+{
+	Destroy();
 }

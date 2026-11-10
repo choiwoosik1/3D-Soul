@@ -91,3 +91,11 @@ void ANormalEnemy::NotifyHealthBarLockOn(bool bIsLockedOn)
 		HealthBarComponent->SetLockOnState(bIsLockedOn);
 	}
 }
+
+void ANormalEnemy::ResetToInitialState()
+{
+    Super::ResetToInitialState();
+    SetCharacterState(EEnemyState::Patrol);
+
+    HealthBarComponent->SetVisibility(false);
+}

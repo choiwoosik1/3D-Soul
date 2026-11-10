@@ -148,6 +148,8 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Animation")
 	UAnimMontage* DeathMontage = nullptr;
 
+	FTransform InitialTransform;
+
 	virtual void PostInitializeComponents() override;
 
 	virtual void BeginPlay() override;
@@ -251,4 +253,6 @@ public:
     virtual void Die();
 
 	virtual void NotifyHealthBarLockOn(bool bIsLockedOn) {}
+
+	virtual void ResetToInitialState();
 };

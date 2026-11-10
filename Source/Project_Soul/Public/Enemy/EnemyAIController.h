@@ -33,10 +33,10 @@ protected:
     float MaxDetectionLevel = 100.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Perception")
-    float SightIncreaseRate = 30.f;
+    float SightIncreaseRate = 3.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Perception")
-    float HearingIncreaseRate = 20.f;
+    float HearingIncreaseRate = 2.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Perception")
     float DetectionDecreaseRate = 2.f;

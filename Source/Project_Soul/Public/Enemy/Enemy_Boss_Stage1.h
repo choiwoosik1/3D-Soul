@@ -18,6 +18,8 @@ public:
 
 	void EndBossFight();
 
+	virtual void ResetToInitialState() override;
+
 protected:
 	FTimerHandle UpdateDistanceTimerHandle;
 
@@ -34,6 +36,8 @@ protected:
 
 	virtual void BeginPlay() override;
 
+	void StartBehavior();
+
 	virtual void NotifyHealthBarUpdate(float NewCurrentHealth, float NewMaxHealth) override;
 
 	void UpdateDistance();
@@ -41,4 +45,6 @@ protected:
 	virtual void DecideNextAction() override;
 
 	virtual void ResumeCombat() override;
+
+	virtual void Die() override;
 };

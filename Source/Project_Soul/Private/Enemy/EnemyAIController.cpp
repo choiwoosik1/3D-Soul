@@ -165,8 +165,7 @@ void AEnemyAIController::UpdateDetectionLevel()
         if ((bCrossed30 || bCrossed40) && DetectedTarget)
         {
             SetFocus(DetectedTarget);
-            FTimerHandle TempHandle;
-            GetWorldTimerManager().SetTimer(TempHandle, [this]() { ClearFocus(EAIFocusPriority::Gameplay); }, 0.6f, false);
+            ClearFocus(EAIFocusPriority::Gameplay);
         }
 
 		// Transition to combat state when detection level reaches max and enemy is alert

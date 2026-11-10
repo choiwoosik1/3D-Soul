@@ -71,4 +71,6 @@ public:
 	void EnableRagdoll();
 
 	virtual void NotifyHealthBarLockOn(bool bIsLockedOn) override;
+
+	virtual void ResetToInitialState() override;
 };
