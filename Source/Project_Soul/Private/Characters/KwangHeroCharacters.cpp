@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Characters/KwangHeroCharacters.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -10,7 +7,7 @@
 #include "DataAssets/Input/DataAsset_InputConfig.h"
 #include "Components/Input/KwangInputComponent.h"
 #include "KwangGameplayTags.h"
-#include "AbilitySystem/KwangAbilitySystemComponent.h" // GASÀÇ '³ú' ¿ªÇÒÀ» ÇÏ´Â ÄÄÆ÷³ÍÆ®
+#include "AbilitySystem/KwangAbilitySystemComponent.h" // GASì˜ 'ë‡Œ' ì—­í• ì„ í•˜ëŠ” ì»´í¬ë„ŒíŠ¸
 #include "DataAssets/StartUpData/DataAsset_HeroStartUpData.h"
 #include "Components/Combat/HeroCombatComponent.h"
 #include "Components/UI/HeroUIComponent.h"
@@ -24,6 +21,10 @@
 #include "Engine/DamageEvents.h"
 #include "Interfaces/PawnUIInterface.h"
 #include "Components/UI/HeroUIComponent.h"
+#include "Checkpoint.h"
+#include "GameplayEffect.h"
+#include "Animation/AnimMontage.h"
+#include "Perception/AISense_Hearing.h"
 
 #include "KwangDebugHelper.h"
 
@@ -33,56 +34,56 @@ AKwangHeroCharacters::AKwangHeroCharacters()
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
 
-	// 1. Ä³¸¯ÅÍÀÇ ¹°¸® Ãæµ¹ ¿µ¿ª(Ä¸½¶) Å©±â ¼¼ÆÃ (¹İÁö¸§ 42, Àı¹İ ³ôÀÌ 96)
+	// 1. ìºë¦­í„°ì˜ ë¬¼ë¦¬ ì¶©ëŒ ì˜ì—­(ìº¡ìŠ) í¬ê¸° ì„¸íŒ… (ë°˜ì§€ë¦„ 42, ì ˆë°˜ ë†’ì´ 96)
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.f);
 
-	// 2. Ä³¸¯ÅÍÀÇ È¸ÀüÀÌ Ä«¸Ş¶ó(ÄÁÆ®·Ñ·¯)ÀÇ È¸ÀüÀ» µû¶ó°¥ °ÍÀÎ°¡ ? -> "¾È µû¶ó°£´Ù(false)"
-	// ÀÌ°Ô true¸é ¸¶¿ì½º¸¦ µ¹¸± ¶§¸¶´Ù Ä³¸¯ÅÍ ¸öÅëµµ ±× ¹æÇâÀ¸·Î »»»»ÇÏ°Ô °°ÀÌ µ·´Ù.
-	// RPG °ÔÀÓÀº ¸¶¿ì½º¸¦ µ¹¸®¸é Ä³¸¯ÅÍ ¸öÀº °¡¸¸È÷ ÀÖ°í Ä«¸Ş¶ó¸¸ ÁÖÀ§¸¦ ¸Éµ¹¾Æ¾ß ÇÏ¹Ç·Î ÀüºÎ false·Î ²û.
+	// 2. ìºë¦­í„°ì˜ íšŒì „ì´ ì¹´ë©”ë¼(ì»¨íŠ¸ë¡¤ëŸ¬)ì˜ íšŒì „ì„ ë”°ë¼ê°ˆ ê²ƒì¸ê°€ ? -> "ì•ˆ ë”°ë¼ê°„ë‹¤(false)"
+	// ì´ê²Œ trueë©´ ë§ˆìš°ìŠ¤ë¥¼ ëŒë¦´ ë•Œë§ˆë‹¤ ìºë¦­í„° ëª¸í†µë„ ê·¸ ë°©í–¥ìœ¼ë¡œ ë»£ë»£í•˜ê²Œ ê°™ì´ ëˆë‹¤.
+	// RPG ê²Œì„ì€ ë§ˆìš°ìŠ¤ë¥¼ ëŒë¦¬ë©´ ìºë¦­í„° ëª¸ì€ ê°€ë§Œíˆ ìˆê³  ì¹´ë©”ë¼ë§Œ ì£¼ìœ„ë¥¼ ë§´ëŒì•„ì•¼ í•˜ë¯€ë¡œ ì „ë¶€ falseë¡œ ë”.
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
-	 
-	// 3. ½ºÇÁ¸µ¾Ï ÄÄÆ÷³ÍÆ®¸¦ ¸Ş¸ğ¸®¿¡ »ı¼ºÇÏ°í ÀÌ¸§À» "CameraBoom"À¸·Î ÁöÁ¤
+
+	// 3. ìŠ¤í”„ë§ì•” ì»´í¬ë„ŒíŠ¸ë¥¼ ë©”ëª¨ë¦¬ì— ìƒì„±í•˜ê³  ì´ë¦„ì„ "CameraBoom"ìœ¼ë¡œ ì§€ì •
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 
-	// 4. »ı¼ºÇÑ ½ºÇÁ¸µ¾ÏÀ» Ä³¸¯ÅÍÀÇ ÃÖ»óÀ§ ºÎ¸ğ(Root)ÀÎ Ä¸½¶ ÄÄÆ÷³ÍÆ®¿¡ °®´Ù ºÙÀÓ
+	// 4. ìƒì„±í•œ ìŠ¤í”„ë§ì•”ì„ ìºë¦­í„°ì˜ ìµœìƒìœ„ ë¶€ëª¨(Root)ì¸ ìº¡ìŠ ì»´í¬ë„ŒíŠ¸ì— ê°–ë‹¤ ë¶™ì„
 	CameraBoom->SetupAttachment(GetRootComponent());
 
-	// 5. ½ºÇÁ¸µ¾Ï(¼¿Ä«ºÀ)ÀÇ ±æÀÌ¸¦ 200 ¾ğ¸®¾ó À¯´Ö(cm)À¸·Î ¼³Á¤
+	// 5. ìŠ¤í”„ë§ì•”(ì…€ì¹´ë´‰)ì˜ ê¸¸ì´ë¥¼ 200 ì–¸ë¦¬ì–¼ ìœ ë‹›(cm)ìœ¼ë¡œ ì„¤ì •
 	CameraBoom->TargetArmLength = 200.f;
 
-	// 6. Ä«¸Ş¶ó°¡ Ä³¸¯ÅÍÀÇ Á¤Áß¾Ó µÚÅë¼ö¸¦ °¡¸®Áö ¾Êµµ·Ï, ¼¿Ä«ºÀÀÇ ³¡ºÎºĞÀ» »ìÂ¦ ¿ìÃø »ó´ÜÀ¸·Î ¿Å±è.
-	// FVector(X:¾ÕµÚ, Y:ÁÂ¿ì, Z:À§¾Æ·¡). Áï, ¿ìÃøÀ¸·Î 55, À§·Î 65¸¸Å­ ÀÌµ¿½ÃÅ² '¿À¹ö ¼ñ´õ(¾î±ú³Ê¸Ó)' ºä ¼¼ÆÃ
+	// 6. ì¹´ë©”ë¼ê°€ ìºë¦­í„°ì˜ ì •ì¤‘ì•™ ë’¤í†µìˆ˜ë¥¼ ê°€ë¦¬ì§€ ì•Šë„ë¡, ì…€ì¹´ë´‰ì˜ ëë¶€ë¶„ì„ ì‚´ì§ ìš°ì¸¡ ìƒë‹¨ìœ¼ë¡œ ì˜®ê¹€.
+	// FVector(X:ì•ë’¤, Y:ì¢Œìš°, Z:ìœ„ì•„ë˜). ì¦‰, ìš°ì¸¡ìœ¼ë¡œ 55, ìœ„ë¡œ 65ë§Œí¼ ì´ë™ì‹œí‚¨ 'ì˜¤ë²„ ìˆ„ë”(ì–´ê¹¨ë„ˆë¨¸)' ë·° ì„¸íŒ…
 	CameraBoom->SocketOffset = FVector(0.f, 55.f, 65.f);
 
-	// 7.¸¶¿ì½º¸¦ ¿òÁ÷ÀÏ ¶§(ÄÁÆ®·Ñ·¯ È¸Àü), ÀÌ ¼¿Ä«ºÀ(½ºÇÁ¸µ¾Ï)ÀÌ ±× ¸¶¿ì½º È¸Àü°ªÀ» ¹Ş¾Æ¼­ °°ÀÌ µ¹¾Æ°¥ °ÍÀÎ°¡? -> "µ¹¾Æ°£´Ù(true)"
+	// 7.ë§ˆìš°ìŠ¤ë¥¼ ì›€ì§ì¼ ë•Œ(ì»¨íŠ¸ë¡¤ëŸ¬ íšŒì „), ì´ ì…€ì¹´ë´‰(ìŠ¤í”„ë§ì•”)ì´ ê·¸ ë§ˆìš°ìŠ¤ íšŒì „ê°’ì„ ë°›ì•„ì„œ ê°™ì´ ëŒì•„ê°ˆ ê²ƒì¸ê°€? -> "ëŒì•„ê°„ë‹¤(true)"
 	CameraBoom->bUsePawnControlRotation = true;
 
-	// 8. ½ÇÁ¦ È­¸éÀ» ºñÃçÁÙ Ä«¸Ş¶ó ºÎÇ°À» ¸Ş¸ğ¸®¿¡ »ı¼ºÇÏ°í ÀÌ¸§À» "FollowCamera"·Î ÁöÁ¤
+	// 8. ì‹¤ì œ í™”ë©´ì„ ë¹„ì¶°ì¤„ ì¹´ë©”ë¼ ë¶€í’ˆì„ ë©”ëª¨ë¦¬ì— ìƒì„±í•˜ê³  ì´ë¦„ì„ "FollowCamera"ë¡œ ì§€ì •
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 
-	// 9. ÀÌ Ä«¸Ş¶ó¸¦ ¾Æ±î ¸¸µç ¼¿Ä«ºÀ(CameraBoom)¿¡ °®´Ù ºÙÀÓ
-	// ±×³É ºÙÀÌ´Â °Ô ¾Æ´Ï¶ó, USpringArmComponent::SocketName ÀÌ¶ó´Â '¼¿Ä«ºÀÀÇ ¸Ç ³¡ºÎºĞ(¼ÒÄÏ)'¿¡ Á¤È®È÷ ´Ş¾ÆÁÜ
+	// 9. ì´ ì¹´ë©”ë¼ë¥¼ ì•„ê¹Œ ë§Œë“  ì…€ì¹´ë´‰(CameraBoom)ì— ê°–ë‹¤ ë¶™ì„
+	// ê·¸ëƒ¥ ë¶™ì´ëŠ” ê²Œ ì•„ë‹ˆë¼, USpringArmComponent::SocketName ì´ë¼ëŠ” 'ì…€ì¹´ë´‰ì˜ ë§¨ ëë¶€ë¶„(ì†Œì¼“)'ì— ì •í™•íˆ ë‹¬ì•„ì¤Œ
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 
-	// 10. Ä«¸Ş¶ó´Â ¸¶¿ì½º È¸Àü°ªÀ» Á÷Á¢ ¹ŞÀ» °ÍÀÎ°¡? -> "¾È ¹Ş´Â´Ù(false)"
-	// Ä«¸Ş¶ó´Â ÀÌ¹Ì ¸¶¿ì½º¿¡ µû¶ó µµ´Â ¼¿Ä«ºÀ ³¡¿¡ ¸Å´Ş·Á ÀÖÀ¸¹Ç·Î, ±»ÀÌ ÀÚ½Å±îÁö ÀÌÁßÀ¸·Î È¸ÀüÇÒ ÇÊ¿ä°¡ ¾øÀ½
+	// 10. ì¹´ë©”ë¼ëŠ” ë§ˆìš°ìŠ¤ íšŒì „ê°’ì„ ì§ì ‘ ë°›ì„ ê²ƒì¸ê°€? -> "ì•ˆ ë°›ëŠ”ë‹¤(false)"
+	// ì¹´ë©”ë¼ëŠ” ì´ë¯¸ ë§ˆìš°ìŠ¤ì— ë”°ë¼ ë„ëŠ” ì…€ì¹´ë´‰ ëì— ë§¤ë‹¬ë ¤ ìˆìœ¼ë¯€ë¡œ, êµ³ì´ ìì‹ ê¹Œì§€ ì´ì¤‘ìœ¼ë¡œ íšŒì „í•  í•„ìš”ê°€ ì—†ìŒ
 	FollowCamera->bUsePawnControlRotation = false;
 
-	// GetCharacterMovement(): ¾ğ¸®¾ó ¿£ÁøÀÌ Ä³¸¯ÅÍ¿¡°Ô ±âº»À¸·Î ´Ş¾ÆÁØ 'ÀÌµ¿ °ü¸® ÄÄÆ÷³ÍÆ®'¸¦ ºÒ·¯¿È
-	// 1. Ä³¸¯ÅÍ°¡ ÀÌµ¿ÇÏ·Á´Â ¹æÇâÀ¸·Î ¸ö(Mesh)À» ÀÚµ¿À¸·Î È¸Àü½ÃÅ³ °ÍÀÎ°¡? -> "±×·¸´Ù(true)"
-	// ¾Æ±î ¸¶¿ì½º È¸ÀüÀ» ²¨µ×±â ¶§¹®¿¡, ÀÌÁ¦ Ä³¸¯ÅÍ´Â ¸¶¿ì½º°¡ ¾Æ´Ï¶ó ÀÚ±â°¡ °É¾î°¡´Â ¹æÇâ(W,A,S,D)À» ÃÄ´Ùº¸¸ç °È°Ô µÊ.
+	// GetCharacterMovement(): ì–¸ë¦¬ì–¼ ì—”ì§„ì´ ìºë¦­í„°ì—ê²Œ ê¸°ë³¸ìœ¼ë¡œ ë‹¬ì•„ì¤€ 'ì´ë™ ê´€ë¦¬ ì»´í¬ë„ŒíŠ¸'ë¥¼ ë¶ˆëŸ¬ì˜´
+	// 1. ìºë¦­í„°ê°€ ì´ë™í•˜ë ¤ëŠ” ë°©í–¥ìœ¼ë¡œ ëª¸(Mesh)ì„ ìë™ìœ¼ë¡œ íšŒì „ì‹œí‚¬ ê²ƒì¸ê°€? -> "ê·¸ë ‡ë‹¤(true)"
+	// ì•„ê¹Œ ë§ˆìš°ìŠ¤ íšŒì „ì„ êº¼ë’€ê¸° ë•Œë¬¸ì—, ì´ì œ ìºë¦­í„°ëŠ” ë§ˆìš°ìŠ¤ê°€ ì•„ë‹ˆë¼ ìê¸°ê°€ ê±¸ì–´ê°€ëŠ” ë°©í–¥(W,A,S,D)ì„ ì³ë‹¤ë³´ë©° ê±·ê²Œ ë¨.
 	GetCharacterMovement()->bOrientRotationToMovement = true;
-	
-	// FRotator(Pitch, Yaw, Roll) Áß Yaw(ZÃà, ÁÂ¿ì µ¹¸²) °ªÀ» 500À¸·Î ¼³Á¤. (1ÃÊ¿¡ 500µµ È¸Àü)
+
+	// FRotator(Pitch, Yaw, Roll) ì¤‘ Yaw(Zì¶•, ì¢Œìš° ëŒë¦¼) ê°’ì„ 500ìœ¼ë¡œ ì„¤ì •. (1ì´ˆì— 500ë„ íšŒì „)
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 500.f, 0.f);
 
-	// 3. Ä³¸¯ÅÍÀÇ ÃÖ´ë °È±â(ÀÌµ¿) ¼Óµµ¸¦ 400 ¾ğ¸®¾ó À¯´Ö(cm/s)À¸·Î Á¦ÇÑ
+	// 3. ìºë¦­í„°ì˜ ìµœëŒ€ ê±·ê¸°(ì´ë™) ì†ë„ë¥¼ 400 ì–¸ë¦¬ì–¼ ìœ ë‹›(cm/s)ìœ¼ë¡œ ì œí•œ
 	GetCharacterMovement()->MaxWalkSpeed = 400.f;
 
-	// 4. Å°º¸µå(ÀÌµ¿ Å°)¿¡¼­ ¼ÕÀ» ¶ÃÀ» ¶§ Àû¿ëµÇ´Â ºê·¹ÀÌÅ©(°¨¼Ó)ÀÇ Èû
-	// ¼öÄ¡°¡ ³ôÀ»¼ö·Ï ¾óÀ½ÆÇÃ³·³ ¹Ì²ô·¯ÁöÁö ¾Ê°í, ¹Ù´Ú¿¡ ¹ßÀ» µü ºÙÀÌ°í Áï½Ã ¸ØÃç ¼¶.
+	// 4. í‚¤ë³´ë“œ(ì´ë™ í‚¤)ì—ì„œ ì†ì„ ë—ì„ ë•Œ ì ìš©ë˜ëŠ” ë¸Œë ˆì´í¬(ê°ì†)ì˜ í˜
+	// ìˆ˜ì¹˜ê°€ ë†’ì„ìˆ˜ë¡ ì–¼ìŒíŒì²˜ëŸ¼ ë¯¸ë„ëŸ¬ì§€ì§€ ì•Šê³ , ë°”ë‹¥ì— ë°œì„ ë”± ë¶™ì´ê³  ì¦‰ì‹œ ë©ˆì¶° ì„¬.
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
 
 	HeroCombatComponent = CreateDefaultSubobject<UHeroCombatComponent>(TEXT("HeroCombatComponent"));
@@ -107,7 +108,7 @@ UHeroUIComponent* AKwangHeroCharacters::GetHeroUIComponent() const
 
 void AKwangHeroCharacters::PossessedBy(AController* NewController)
 {
-	// 1. ºÎ¸ğ Å¬·¡½ºÀÇ ±âº» ºùÀÇ ·ÎÁ÷À» ¸ÕÀú ½ÇÇàÇØ¼­ »À´ë ¼¼ÆÃ
+	// 1. ë¶€ëª¨ í´ë˜ìŠ¤ì˜ ê¸°ë³¸ ë¹™ì˜ ë¡œì§ì„ ë¨¼ì € ì‹¤í–‰í•´ì„œ ë¼ˆëŒ€ ì„¸íŒ…
 	Super::PossessedBy(NewController);
 
 	if (!CharacterStartUpData.IsNull())
@@ -121,42 +122,42 @@ void AKwangHeroCharacters::PossessedBy(AController* NewController)
 
 void AKwangHeroCharacters::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-	// 1. ¾ÈÀüÀåÄ¡: ºí·çÇÁ¸°Æ®¿¡¼­ 'Á¶ÀÛÅ° ¼­·ùÃ¶(Data Asset)'À» ¾È ³¢¿ö ³Ö°í °ÔÀÓÀ» ½ÇÇàÇÏ¸é, 
-	// ¿øÀÎÀ» ¾Ë ¼ö ¾ø´Â ¹ö±×°¡ »ı±â±â Àü¿¡ ¿©±â¼­ Áï½Ã ¿¡µğÅÍ¸¦ °­Á¦ Á¾·á(Å©·¡½Ã)½ÃÅ°°í °æ°í¹®À» ¶ç¿ò
+	// 1. ì•ˆì „ì¥ì¹˜: ë¸”ë£¨í”„ë¦°íŠ¸ì—ì„œ 'ì¡°ì‘í‚¤ ì„œë¥˜ì² (Data Asset)'ì„ ì•ˆ ë¼ì›Œ ë„£ê³  ê²Œì„ì„ ì‹¤í–‰í•˜ë©´, 
+	// ì›ì¸ì„ ì•Œ ìˆ˜ ì—†ëŠ” ë²„ê·¸ê°€ ìƒê¸°ê¸° ì „ì— ì—¬ê¸°ì„œ ì¦‰ì‹œ ì—ë””í„°ë¥¼ ê°•ì œ ì¢…ë£Œ(í¬ë˜ì‹œ)ì‹œí‚¤ê³  ê²½ê³ ë¬¸ì„ ë„ì›€
 	checkf(InputConfigDataAsset, TEXT("Forgot to assign a valid data asset as input config"));
 
-	// 2. ÇöÀç ÀÌ Ä³¸¯ÅÍ¸¦ Á¶Á¾ÇÏ°í ÀÖ´Â È­¸é ¹ÛÀÇ 'ÁøÂ¥ »ç¶÷(Local Player)' Á¤º¸¸¦ °¡Á®¿È
+	// 2. í˜„ì¬ ì´ ìºë¦­í„°ë¥¼ ì¡°ì¢…í•˜ê³  ìˆëŠ” í™”ë©´ ë°–ì˜ 'ì§„ì§œ ì‚¬ëŒ(Local Player)' ì •ë³´ë¥¼ ê°€ì ¸ì˜´
 	ULocalPlayer* localPlayer = GetController<APlayerController>()->GetLocalPlayer();
 
-	// 3. ±× »ç¶÷ÀÇ ÀÔ·Â ÀåÄ¡(Å°º¸µå/¸¶¿ì½º)¸¦ °ü¸®ÇÏ´Â ÃÖ°í °ü¸®ÀÚ(Subsystem)¸¦ È£Ãâ
+	// 3. ê·¸ ì‚¬ëŒì˜ ì…ë ¥ ì¥ì¹˜(í‚¤ë³´ë“œ/ë§ˆìš°ìŠ¤)ë¥¼ ê´€ë¦¬í•˜ëŠ” ìµœê³  ê´€ë¦¬ì(Subsystem)ë¥¼ í˜¸ì¶œ
 	UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(localPlayer);
 
-	// °ü¸®ÀÚ°¡ Á¤»óÀûÀ¸·Î Á¸ÀçÇÏ´ÂÁö È®ÀÎ
+	// ê´€ë¦¬ìê°€ ì •ìƒì ìœ¼ë¡œ ì¡´ì¬í•˜ëŠ”ì§€ í™•ì¸
 	check(Subsystem);
 
-	// 4. ¼­·ùÃ¶¿¡ µé¾îÀÖ´ø '±âº» Á¶ÀÛ¹ı(DefaultMappingContext)'À» ½Ã½ºÅÛ¿¡ ÀåÂø½ÃÅ´
-	// ¼ıÀÚ 0Àº ¿ì¼±¼øÀ§(Priority)
+	// 4. ì„œë¥˜ì² ì— ë“¤ì–´ìˆë˜ 'ê¸°ë³¸ ì¡°ì‘ë²•(DefaultMappingContext)'ì„ ì‹œìŠ¤í…œì— ì¥ì°©ì‹œí‚´
+	// ìˆ«ì 0ì€ ìš°ì„ ìˆœìœ„(Priority)
 	Subsystem->AddMappingContext(InputConfigDataAsset->DefaultMappingContext, 0);
 
-	// 5. ±âº» ÀÔ·Â ÄÄÆ÷³ÍÆ®¸¦ ¿ì¸®°¡ °³Á¶ÇÑ '¸¸´É ¾î´ğÅÍ ÄÄÆ÷³ÍÆ®(UKwangInputComponent)'·Î Çüº¯È¯(Cast)
+	// 5. ê¸°ë³¸ ì…ë ¥ ì»´í¬ë„ŒíŠ¸ë¥¼ ìš°ë¦¬ê°€ ê°œì¡°í•œ 'ë§ŒëŠ¥ ì–´ëŒ‘í„° ì»´í¬ë„ŒíŠ¸(UKwangInputComponent)'ë¡œ í˜•ë³€í™˜(Cast)
 	UKwangInputComponent* KwangInputComponent = CastChecked<UKwangInputComponent>(PlayerInputComponent);
 
-	// 6. Å°º¸µå-ÇÔ¼ö ¿¬°á(Binding)
-	// ¼­·ùÃ¶(InputConfigDataAsset)À» µÚÁ®¼­ 'InputTag_Move' ÅÂ±×°¡ ºÙÀº Å°º¸µå¸¦ ´©¸£°í ÀÖÀ¸¸é(Triggered), 
-	// ³ª(this)ÀÇ Input_Move ÇÔ¼ö¸¦ ½ÇÇà
-	KwangInputComponent->BindNativeInputAction(InputConfigDataAsset, KwangGameplayTags::InputTag_Move, 
+	// 6. í‚¤ë³´ë“œ-í•¨ìˆ˜ ì—°ê²°(Binding)
+	// ì„œë¥˜ì² (InputConfigDataAsset)ì„ ë’¤ì ¸ì„œ 'InputTag_Move' íƒœê·¸ê°€ ë¶™ì€ í‚¤ë³´ë“œë¥¼ ëˆ„ë¥´ê³  ìˆìœ¼ë©´(Triggered), 
+	// ë‚˜(this)ì˜ Input_Move í•¨ìˆ˜ë¥¼ ì‹¤í–‰
+	KwangInputComponent->BindNativeInputAction(InputConfigDataAsset, KwangGameplayTags::InputTag_Move,
 		ETriggerEvent::Triggered, this, &ThisClass::Input_Move);
-	KwangInputComponent->BindNativeInputAction(InputConfigDataAsset, KwangGameplayTags::InputTag_Look, 
+	KwangInputComponent->BindNativeInputAction(InputConfigDataAsset, KwangGameplayTags::InputTag_Look,
 		ETriggerEvent::Triggered, this, &ThisClass::Input_Look);
 
 	KwangInputComponent->BindAbilityInputAction(InputConfigDataAsset, this, &ThisClass::Input_AbilityInputPressed, &ThisClass::Input_AbilityInputReleased);
 
 }
 
-// Å°º¸µå(WASD)¸¦ ´©¸¦ ¶§¸¶´Ù ½ÇÁ¦·Î ½ÇÇàµÉ ÀÌµ¿ Äİ¹é ÇÔ¼ö
+// í‚¤ë³´ë“œ(WASD)ë¥¼ ëˆ„ë¥¼ ë•Œë§ˆë‹¤ ì‹¤ì œë¡œ ì‹¤í–‰ë  ì´ë™ ì½œë°± í•¨ìˆ˜
 void AKwangHeroCharacters::Input_Move(const FInputActionValue& InputActionValue)
 {
-	// ÇÇ°İ °æÁ÷ / °ø°İ Áß ÅÂ±×
+	// í”¼ê²© ê²½ì§ / ê³µê²© ì¤‘ íƒœê·¸
 	static const FGameplayTag HitStunTag = FGameplayTag::RequestGameplayTag(FName("Player.Status.HitStun"));
 	static const FGameplayTag AttackingTag = FGameplayTag::RequestGameplayTag(FName("Player.Status.Attacking"));
 
@@ -167,31 +168,31 @@ void AKwangHeroCharacters::Input_Move(const FInputActionValue& InputActionValue)
 		return;
 	}
 
-	// 1. ÀÔ·ÂµÈ Å°º¸µå °ªÀ» 2D º¤ÅÍ(X, Y) ÇüÅÂ·Î »Ì¾Æ¿Â´Ù.
-	// W/S¸¦ ´©¸£¸é YÃà °ªÀÌ 1.0 / -1.0 À¸·Î µé¾î¿À°í, D/A¸¦ ´©¸£¸é XÃà °ªÀÌ 1.0 / -1.0 À¸·Î µé¾î¿Â´Ù.
+	// 1. ì…ë ¥ëœ í‚¤ë³´ë“œ ê°’ì„ 2D ë²¡í„°(X, Y) í˜•íƒœë¡œ ë½‘ì•„ì˜¨ë‹¤.
+	// W/Së¥¼ ëˆ„ë¥´ë©´ Yì¶• ê°’ì´ 1.0 / -1.0 ìœ¼ë¡œ ë“¤ì–´ì˜¤ê³ , D/Aë¥¼ ëˆ„ë¥´ë©´ Xì¶• ê°’ì´ 1.0 / -1.0 ìœ¼ë¡œ ë“¤ì–´ì˜¨ë‹¤.
 	const FVector2D MovementVector = InputActionValue.Get<FVector2D>();
 
-	// 2. ÇöÀç ³» Ä³¸¯ÅÍ¸¦ Á¶Á¾ÇÏ´Â ÄÁÆ®·Ñ·¯(¸¶¿ì½º/Ä«¸Ş¶ó)°¡ ¹Ù¶óº¸´Â È¸Àü°ªÀ» °¡Á®¿Â´Ù.
-	// Áß¿ä : Pitch(À§¾Æ·¡)¿Í Roll(°¼¿ì¶×)Àº 0.f·Î ¹«½ÃÇÏ°í, ¿ÀÁ÷ Yaw(ZÃà, ÁÂ¿ì) °ª¸¸ °¡Á®¿É
+	// 2. í˜„ì¬ ë‚´ ìºë¦­í„°ë¥¼ ì¡°ì¢…í•˜ëŠ” ì»¨íŠ¸ë¡¤ëŸ¬(ë§ˆìš°ìŠ¤/ì¹´ë©”ë¼)ê°€ ë°”ë¼ë³´ëŠ” íšŒì „ê°’ì„ ê°€ì ¸ì˜¨ë‹¤.
+	// ì¤‘ìš” : Pitch(ìœ„ì•„ë˜)ì™€ Roll(ê°¸ìš°ëš±)ì€ 0.fë¡œ ë¬´ì‹œí•˜ê³ , ì˜¤ì§ Yaw(Zì¶•, ì¢Œìš°) ê°’ë§Œ ê°€ì ¸ì˜µ
 	const FRotator MovementRotation(0.f, Controller->GetControlRotation().Yaw, 0.f);
 
-	// 3. ¾Õ/µÚ ÀÌµ¿ Ã³¸® (W, S Å°)
+	// 3. ì•/ë’¤ ì´ë™ ì²˜ë¦¬ (W, S í‚¤)
 	if (MovementVector.Y != 0.f)
 	{
-		// ¸¶¿ì½º°¡ ¹Ù¶óº¸´Â ¹æÇâ(MovementRotation)À» ±âÁØÀ¸·Î 'ÁøÂ¥ ¾ÕÂÊ(Forward)'ÀÌ ¾îµòÁö ¼öÇĞÀûÀ¸·Î °è»ê
+		// ë§ˆìš°ìŠ¤ê°€ ë°”ë¼ë³´ëŠ” ë°©í–¥(MovementRotation)ì„ ê¸°ì¤€ìœ¼ë¡œ 'ì§„ì§œ ì•ìª½(Forward)'ì´ ì–´ë”˜ì§€ ìˆ˜í•™ì ìœ¼ë¡œ ê³„ì‚°
 		const FVector ForwardDirection = MovementRotation.RotateVector(FVector::ForwardVector);
 
-		// Ä³¸¯ÅÍ ¹«ºê¸ÕÆ® ÄÄÆ÷³ÍÆ®¿¡°Ô "¹æ±İ °è»êÇÑ ¾ÕÂÊ ¹æÇâÀ¸·Î, ³»°¡ ´©¸¥ Èû(Y°ª)¸¸Å­ °É¾î°¡" ¶ó°í ¸í·É
+		// ìºë¦­í„° ë¬´ë¸Œë¨¼íŠ¸ ì»´í¬ë„ŒíŠ¸ì—ê²Œ "ë°©ê¸ˆ ê³„ì‚°í•œ ì•ìª½ ë°©í–¥ìœ¼ë¡œ, ë‚´ê°€ ëˆ„ë¥¸ í˜(Yê°’)ë§Œí¼ ê±¸ì–´ê°€" ë¼ê³  ëª…ë ¹
 		AddMovementInput(ForwardDirection, MovementVector.Y);
 	}
 
-	// 4. ÁÂ/¿ì ÀÌµ¿ Ã³¸® (A, D Å°)
+	// 4. ì¢Œ/ìš° ì´ë™ ì²˜ë¦¬ (A, D í‚¤)
 	if (MovementVector.X != 0.f)
 	{
-		// ¸¶¿ì½º°¡ ¹Ù¶óº¸´Â ¹æÇâÀ» ±âÁØÀ¸·Î 'ÁøÂ¥ ¿À¸¥ÂÊ(Right)'ÀÌ ¾îµòÁö °è»ê
+		// ë§ˆìš°ìŠ¤ê°€ ë°”ë¼ë³´ëŠ” ë°©í–¥ì„ ê¸°ì¤€ìœ¼ë¡œ 'ì§„ì§œ ì˜¤ë¥¸ìª½(Right)'ì´ ì–´ë”˜ì§€ ê³„ì‚°
 		const FVector RightDirection = MovementRotation.RotateVector(FVector::RightVector);
 
-		// Ä³¸¯ÅÍ ¹«ºê¸ÕÆ® ÄÄÆ÷³ÍÆ®¿¡°Ô °è»êµÈ ¿À¸¥ÂÊ ¹æÇâÀ¸·Î ´©¸¥ Èû(X°ª)¸¸Å­ °É¾î°¡¶ó°í ¸í·É
+		// ìºë¦­í„° ë¬´ë¸Œë¨¼íŠ¸ ì»´í¬ë„ŒíŠ¸ì—ê²Œ ê³„ì‚°ëœ ì˜¤ë¥¸ìª½ ë°©í–¥ìœ¼ë¡œ ëˆ„ë¥¸ í˜(Xê°’)ë§Œí¼ ê±¸ì–´ê°€ë¼ê³  ëª…ë ¹
 		AddMovementInput(RightDirection, MovementVector.X);
 	}
 }
@@ -211,19 +212,22 @@ void AKwangHeroCharacters::Input_Look(const FInputActionValue& InputActionValue)
 	}
 }
 
-// 1.[½ºÅ³ ¹öÆ° ´©¸§ Àü´Ş] À¯Àú°¡ ¸¶¿ì½º ÁÂÅ¬¸¯(InputTag.Attack) °°Àº ½ºÅ³ ¹öÆ°À» ´­·¶À» ¶§ ½ÇÇà
+// 1.[ìŠ¤í‚¬ ë²„íŠ¼ ëˆ„ë¦„ ì „ë‹¬] ìœ ì €ê°€ ë§ˆìš°ìŠ¤ ì¢Œí´ë¦­(InputTag.Attack) ê°™ì€ ìŠ¤í‚¬ ë²„íŠ¼ì„ ëˆŒë €ì„ ë•Œ ì‹¤í–‰
 void AKwangHeroCharacters::Input_AbilityInputPressed(FGameplayTag InInputTag)
 {
-	// [ÇÙ½É ·ÎÁ÷] Ä³¸¯ÅÍ º»Ã¼(À°Ã¼)´Â ½ºÅ³ÀÌ ¾î¶»°Ô ³ª°¡´ÂÁö ¸ğ¸§. 
-	// ±×Àú ÀÚ±â ¸Ó¸´¼ÓÀÇ ³ú(Kwang ASC)¿¡°Ô "ÀÌ¸§Ç¥(InInputTag) ´Ş¸° ¹öÆ° ´­·ÈÀ¸´Ï±î ³×°¡ ¾Ë¾Æ¼­ ½ºÅ³ Ã£¾Æ ½á!" ¶ó°í Åä½º
+	// Attacks, rolls and skills make noise (block / target lock do not)
+	NotifyAbilityNoise(InInputTag);
+
+	// [í•µì‹¬ ë¡œì§] ìºë¦­í„° ë³¸ì²´(ìœ¡ì²´)ëŠ” ìŠ¤í‚¬ì´ ì–´ë–»ê²Œ ë‚˜ê°€ëŠ”ì§€ ëª¨ë¦„. 
+	// ê·¸ì € ìê¸° ë¨¸ë¦¿ì†ì˜ ë‡Œ(Kwang ASC)ì—ê²Œ "ì´ë¦„í‘œ(InInputTag) ë‹¬ë¦° ë²„íŠ¼ ëˆŒë ¸ìœ¼ë‹ˆê¹Œ ë„¤ê°€ ì•Œì•„ì„œ ìŠ¤í‚¬ ì°¾ì•„ ì¨!" ë¼ê³  í† ìŠ¤
 	KwangAbilitySystemComponent->OnAbilityInputPressed(InInputTag);
 }
 
-// 2. [½ºÅ³ ¹öÆ° ¶À Àü´Ş] À¯Àú°¡ ´©¸£°í ÀÖ´ø ½ºÅ³ ¹öÆ°¿¡¼­ ¼ÕÀ» ¶ÃÀ» ¶§ ½ÇÇàµÊ.
+// 2. [ìŠ¤í‚¬ ë²„íŠ¼ ë—Œ ì „ë‹¬] ìœ ì €ê°€ ëˆ„ë¥´ê³  ìˆë˜ ìŠ¤í‚¬ ë²„íŠ¼ì—ì„œ ì†ì„ ë—ì„ ë•Œ ì‹¤í–‰ë¨.
 void AKwangHeroCharacters::Input_AbilityInputReleased(FGameplayTag InInputTag)
 {
-	// [ÇÙ½É ·ÎÁ÷] ¸¶Âù°¡Áö·Î ³ú(ASC)¿¡°Ô "¾Æ±î ´©¸¥ ±× ¹öÆ°, ¹æ±İ ¼Õ ¶Ã´Ù!" ¶ó°í »óÈ²À» Àü´ŞÇÔ.
-	// ³ú´Â ÀÌ º¸°í¸¦ ¹Ş°í '±â ¸ğÀ¸±â(Â÷Â¡) ½ºÅ³ ÀÌÁ¦ ¹ß»çÇØ¶ó' È¤Àº '´©¸£°í ÀÖÀ» ¶§¸¸ ³ª°¡´Â ¹æÆĞ ¸·±â ½ºÅ³ ²¨¶ó' °°Àº ÆÇ´ÜÀ» ³»¸®°Ô µÊ.
+	// [í•µì‹¬ ë¡œì§] ë§ˆì°¬ê°€ì§€ë¡œ ë‡Œ(ASC)ì—ê²Œ "ì•„ê¹Œ ëˆ„ë¥¸ ê·¸ ë²„íŠ¼, ë°©ê¸ˆ ì† ë—ë‹¤!" ë¼ê³  ìƒí™©ì„ ì „ë‹¬í•¨.
+	// ë‡ŒëŠ” ì´ ë³´ê³ ë¥¼ ë°›ê³  'ê¸° ëª¨ìœ¼ê¸°(ì°¨ì§•) ìŠ¤í‚¬ ì´ì œ ë°œì‚¬í•´ë¼' í˜¹ì€ 'ëˆ„ë¥´ê³  ìˆì„ ë•Œë§Œ ë‚˜ê°€ëŠ” ë°©íŒ¨ ë§‰ê¸° ìŠ¤í‚¬ êº¼ë¼' ê°™ì€ íŒë‹¨ì„ ë‚´ë¦¬ê²Œ ë¨.
 	KwangAbilitySystemComponent->OnAbilityInputReleased(InInputTag);
 }
 
@@ -232,11 +236,11 @@ float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& D
 	if (UKwangFunctionLibrary::NativeDoesActorHaveTag(this, KwangGameplayTags::Shared_Status_Dead))
 		return 0.f;
 
-	// ¸¸¾à ÇöÀç ±¸¸£°í ÀÖ¾î¼­ bIsInvincibleÀÌ true¶ó¸é?
+	// ë§Œì•½ í˜„ì¬ êµ¬ë¥´ê³  ìˆì–´ì„œ bIsInvincibleì´ trueë¼ë©´?
 	if (bIsInvincible)
 	{
-		// µ¥¹ÌÁö¸¦ 0À¸·Î ¸¸µé°í ÇÔ¼ö¸¦ Áï½Ã Á¾·áÇÕ´Ï´Ù. (ÇÇ°¡ ¾È ±ğÀÓ!)
-		// ¿øÇÑ´Ù¸é ¿©±â¿¡ "Ã¬!" ÇÏ´Â °¡µå ÀÌÆåÆ®³ª ¼Ò¸®¸¦ ³ÖÀ» ¼öµµ ÀÖ½À´Ï´Ù.
+		// ë°ë¯¸ì§€ë¥¼ 0ìœ¼ë¡œ ë§Œë“¤ê³  í•¨ìˆ˜ë¥¼ ì¦‰ì‹œ ì¢…ë£Œí•©ë‹ˆë‹¤. (í”¼ê°€ ì•ˆ ê¹ì„!)
+		// ì›í•œë‹¤ë©´ ì—¬ê¸°ì— "ì±™!" í•˜ëŠ” ê°€ë“œ ì´í™íŠ¸ë‚˜ ì†Œë¦¬ë¥¼ ë„£ì„ ìˆ˜ë„ ìˆìŠµë‹ˆë‹¤.
 		return 0.0f;
 	}
 
@@ -244,25 +248,25 @@ float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& D
 
 	if (ActualDamage > 0.f)
 	{
-			// ApplyDamage() ¸¶Áö¸· ÀÎÀÚ·Î ³Ñ±ä µ¥¹ÌÁö Å¸ÀÔÀ» È®ÀÎ.
-			// GuardBreak¸é "¸·¾Æµµ ¶Õ¸®´Â °ø°İ", Ignore¸é "¹æ¾î ÀÚÃ¼¸¦ ¹«½ÃÇÏ´Â °ø°İ"ÀÌ¶ó´Â ¶æ.
-			const bool bIsGuardBreakAttack = DamageEvent.DamageTypeClass &&
+		// ApplyDamage() ë§ˆì§€ë§‰ ì¸ìë¡œ ë„˜ê¸´ ë°ë¯¸ì§€ íƒ€ì…ì„ í™•ì¸.
+		// GuardBreakë©´ "ë§‰ì•„ë„ ëš«ë¦¬ëŠ” ê³µê²©", Ignoreë©´ "ë°©ì–´ ìì²´ë¥¼ ë¬´ì‹œí•˜ëŠ” ê³µê²©"ì´ë¼ëŠ” ëœ».
+		const bool bIsGuardBreakAttack = DamageEvent.DamageTypeClass &&
 			DamageEvent.DamageTypeClass->IsChildOf(UDamageType_GuardBreak::StaticClass());
-			const bool bIsIgnoreAttack = DamageEvent.DamageTypeClass &&
+		const bool bIsIgnoreAttack = DamageEvent.DamageTypeClass &&
 			DamageEvent.DamageTypeClass->IsChildOf(UDamageType_Ignore::StaticClass());
 
 		if (IsBlocking() && DamageCauser && !bIsIgnoreAttack)
 		{
 			if (bIsGuardBreakAttack)
 			{
-				Debug::Print(TEXT("GuardBreak Triggered!"), FColor::Red); // ÀÓ½Ã·Î Ãß°¡
+				Debug::Print(TEXT("GuardBreak Triggered!"), FColor::Red); // ì„ì‹œë¡œ ì¶”ê°€
 
-				// ¹æ¾î ¾îºô¸®Æ¼ °­Á¦Ãë¼Ò + ±âÀı GE Àû¿ë(HeavyGuardBrokenEffectClass) + ±âÀı ¾Ö´Ï¸ŞÀÌ¼Ç±îÁö
-				// ÀÌ ÇÔ¼ö ÇÏ³ª°¡ ´Ù Ã³¸®ÇØÁÜ (true = °¡µåºê·¹ÀÌÅ© °ø°İ¿¡ ÀÇÇÑ °Í)
+				// ë°©ì–´ ì–´ë¹Œë¦¬í‹° ê°•ì œì·¨ì†Œ + ê¸°ì ˆ GE ì ìš©(HeavyGuardBrokenEffectClass) + ê¸°ì ˆ ì• ë‹ˆë©”ì´ì…˜ê¹Œì§€
+				// ì´ í•¨ìˆ˜ í•˜ë‚˜ê°€ ë‹¤ ì²˜ë¦¬í•´ì¤Œ (true = ê°€ë“œë¸Œë ˆì´í¬ ê³µê²©ì— ì˜í•œ ê²ƒ)
 				TriggerGuardBreak(true);
 
-				// ±âÀı°ú º°°³·Î µ¥¹ÌÁö´Â ±×´ë·Î µé¾î°¡¾ß ÇÏ¹Ç·Î, ±âÁ¸ ºí·Ï/ÀÏ¹İÇÇ°İÀÌ¶û °°Àº ÆĞÅÏÀ¸·Î
-				// ASC¿¡ µ¥¹ÌÁö GE Àû¿ë. ºí·ÏÃ³·³ 0.3 °öÇÏ´Â °æ°¨ ¾øÀÌ ActualDamage ±×´ë·Î »ç¿ë.
+				// ê¸°ì ˆê³¼ ë³„ê°œë¡œ ë°ë¯¸ì§€ëŠ” ê·¸ëŒ€ë¡œ ë“¤ì–´ê°€ì•¼ í•˜ë¯€ë¡œ, ê¸°ì¡´ ë¸”ë¡/ì¼ë°˜í”¼ê²©ì´ë‘ ê°™ì€ íŒ¨í„´ìœ¼ë¡œ
+				// ASCì— ë°ë¯¸ì§€ GE ì ìš©. ë¸”ë¡ì²˜ëŸ¼ 0.3 ê³±í•˜ëŠ” ê²½ê° ì—†ì´ ActualDamage ê·¸ëŒ€ë¡œ ì‚¬ìš©.
 				UKwangAbilitySystemComponent* ASC = UKwangFunctionLibrary::NativeGetKwangASCFromActor(this);
 				if (ASC && DamageEffectClass)
 				{
@@ -273,24 +277,24 @@ float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& D
 					ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 				}
 
-				// ¿©±â¼­ ³¡³»¾ß ¾Æ·¡ ÆĞ¸µ/ÀÏ¹İºí·Ï ÄÚµå·Î ¾È ÀÌ¾îÁü
+				// ì—¬ê¸°ì„œ ëë‚´ì•¼ ì•„ë˜ íŒ¨ë§/ì¼ë°˜ë¸”ë¡ ì½”ë“œë¡œ ì•ˆ ì´ì–´ì§
 				return ActualDamage;
 			}
 
 			if (UKwangFunctionLibrary::IsValidBlock(DamageCauser, this))
 			{
-				// ÆĞ¸µ Å¸ÀÌ¹Ö Ã¼Å©
+				// íŒ¨ë§ íƒ€ì´ë° ì²´í¬
 				if (UKwangFunctionLibrary::NativeDoesActorHaveTag(
 					this, KwangGameplayTags::Player_Status_Parrying))
 				{
-					// ÆĞ¸µ ¼º°ø: µ¥¹ÌÁö 0, ÀÌº¥Æ® Àü¼Û
+					// íŒ¨ë§ ì„±ê³µ: ë°ë¯¸ì§€ 0, ì´ë²¤íŠ¸ ì „ì†¡
 					FGameplayEventData EventData;
 					EventData.Instigator = DamageCauser;
 					EventData.Target = this;
 					UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
 						this, KwangGameplayTags::Player_Event_Parry, EventData);
 
-					// ÀÓ½Ã µğ¹ö±×
+					// ì„ì‹œ ë””ë²„ê·¸
 					Debug::Print(TEXT("Block Success!"), FColor::Green);
 
 					UKwangAbilitySystemComponent* ParryASC = UKwangFunctionLibrary::NativeGetKwangASCFromActor(this);
@@ -307,7 +311,7 @@ float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& D
 					return 0.f;
 				}
 
-				// ÀÏ¹İ ºí·Ï: µ¥¹ÌÁö 70% °æ°¨, HitReact ¾øÀÌ Á¾·á
+				// ì¼ë°˜ ë¸”ë¡: ë°ë¯¸ì§€ 70% ê²½ê°, HitReact ì—†ì´ ì¢…ë£Œ
 				ActualDamage *= 0.3f;
 				UKwangAbilitySystemComponent* ASC = UKwangFunctionLibrary::NativeGetKwangASCFromActor(this);
 				if (ASC && DamageEffectClass)
@@ -333,7 +337,7 @@ float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& D
 			}
 		}
 
-		// ÀÏ¹İ ÇÇ°İ: Ã¼·Â °¨¼Ò + HitReact
+		// ì¼ë°˜ í”¼ê²©: ì²´ë ¥ ê°ì†Œ + HitReact
 		UKwangAbilitySystemComponent* ASC = UKwangFunctionLibrary::NativeGetKwangASCFromActor(this);
 		if (ASC && DamageEffectClass)
 		{
@@ -344,7 +348,7 @@ float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& D
 			ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 		}
 
-		// ¿©±â¿¡ Ãß°¡
+		// ì—¬ê¸°ì— ì¶”ê°€
 		if (UKwangFunctionLibrary::NativeDoesActorHaveTag(this, KwangGameplayTags::Shared_Status_Dead))
 		{
 			if (DeathMontage)
@@ -370,7 +374,7 @@ void AKwangHeroCharacters::TriggerGuardBreak(bool bIsHeavyBreak)
 
 	if (!ASC) return;
 
-	// ¹æ¾î ¾îºô¸®Æ¼ °­Á¦ Á¾·á
+	// ë°©ì–´ ì–´ë¹Œë¦¬í‹° ê°•ì œ ì¢…ë£Œ
 	FGameplayTagContainer BlockTagContainer;
 	BlockTagContainer.AddTag(KwangGameplayTags::Player_Ability_Block);
 	ASC->CancelAbilities(&BlockTagContainer);
@@ -387,9 +391,9 @@ void AKwangHeroCharacters::TriggerGuardBreak(bool bIsHeavyBreak)
 	}
 
 
-	// ÀÚ¿¬ ¼ÒÁøÀÌ³Ä °¡µå ºê·¹ÀÌÅ© °ø°İ¿¡ ÀÇÇÑ °ÍÀÎÁö µû¶ó ´Ù¸¥ GE Àû¿ë
+	// ìì—° ì†Œì§„ì´ëƒ ê°€ë“œ ë¸Œë ˆì´í¬ ê³µê²©ì— ì˜í•œ ê²ƒì¸ì§€ ë”°ë¼ ë‹¤ë¥¸ GE ì ìš©
 	TSubclassOf<UGameplayEffect> EffectToApply = bIsHeavyBreak ? HeavyGuardBrokenEffectClass : GuardBrokenEffectClass;
-	float StunDuration = 1.5f; // Spec¿¡¼­ ¸ø ÀĞ¾î¿Ã °æ¿ìÀÇ ¾ÈÀüÇÑ ±âº»°ª
+	float StunDuration = 1.5f; // Specì—ì„œ ëª» ì½ì–´ì˜¬ ê²½ìš°ì˜ ì•ˆì „í•œ ê¸°ë³¸ê°’
 
 	if (EffectToApply)
 	{
@@ -403,7 +407,7 @@ void AKwangHeroCharacters::TriggerGuardBreak(bool bIsHeavyBreak)
 		}
 	}
 
-	// Çàµ¿ ºÒ´É ¾Ö´Ï¸ŞÀÌ¼Ç Àç»ı (·çÇÁ) + GE Áö¼Ó½Ã°£°ú ¸ÂÃç Á¤Áö
+	// í–‰ë™ ë¶ˆëŠ¥ ì• ë‹ˆë©”ì´ì…˜ ì¬ìƒ (ë£¨í”„) + GE ì§€ì†ì‹œê°„ê³¼ ë§ì¶° ì •ì§€
 	if (GuardBrokenMontage)
 	{
 		PlayAnimMontage(GuardBrokenMontage);
@@ -471,6 +475,9 @@ bool AKwangHeroCharacters::IsBlocking() const
 void AKwangHeroCharacters::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Used as the respawn position when no checkpoint has been used yet
+	InitialTransform = GetActorTransform();
 }
 
 void AKwangHeroCharacters::Tick(float DeltaTime)
@@ -484,24 +491,185 @@ void AKwangHeroCharacters::Tick(float DeltaTime)
 	{
 		UpdateBlockRotation(DeltaTime);
 	}
+
+	UpdateFootstepNoise(DeltaTime);
 }
 
+void AKwangHeroCharacters::Landed(const FHitResult& Hit)
+{
+	Super::Landed(Hit);
+
+	MakePlayerNoise(LandingLoudness, TEXT("Landing"), NoiseMaxRange);
+}
+
+#pragma region Checkpoint
+// Called by the checkpoint on interaction: remember it as the respawn point and restore health / mana / stamina
+void AKwangHeroCharacters::RestAtCheckpoint(ACheckpoint* Checkpoint)
+{
+	LastCheckpoint = Checkpoint;
+	RestoreStats();
+}
+
+// Refill Health / Mana / Rage(stamina) to their max values.
+// Uses an instant GameplayEffect (not ApplyModToAttribute) so PostGameplayEffectExecute runs and the HUD bars update.
+void AKwangHeroCharacters::RestoreStats()
+{
+	UKwangAbilitySystemComponent* ASC = UKwangFunctionLibrary::NativeGetKwangASCFromActor(this);
+	if (!ASC) return;
+
+	UGameplayEffect* RestoreEffect = NewObject<UGameplayEffect>(GetTransientPackage(), TEXT("GE_RestoreStats_Runtime"));
+	RestoreEffect->DurationPolicy = EGameplayEffectDurationType::Instant;
+
+	// Current = Max (Override with the Max attribute as the magnitude)
+	auto AddRefill = [RestoreEffect](const FGameplayAttribute& Current, const FGameplayAttribute& Max)
+		{
+			FGameplayModifierInfo& Mod = RestoreEffect->Modifiers.AddDefaulted_GetRef();
+			Mod.Attribute = Current;
+			Mod.ModifierOp = EGameplayModOp::Override;
+
+			FAttributeBasedFloat Magnitude;
+			Magnitude.Coefficient = FScalableFloat(1.f);
+			Magnitude.BackingAttribute = FGameplayEffectAttributeCaptureDefinition(
+				Max, EGameplayEffectAttributeCaptureSource::Target, false);
+			Mod.ModifierMagnitude = FGameplayEffectModifierMagnitude(Magnitude);
+		};
+
+	AddRefill(UKwangAttributeSet::GetCurrentHealthAttribute(), UKwangAttributeSet::GetMaxHealthAttribute());
+	AddRefill(UKwangAttributeSet::GetCurrentManaAttribute(), UKwangAttributeSet::GetMaxManaAttribute());
+	AddRefill(UKwangAttributeSet::GetCurrentRageAttribute(), UKwangAttributeSet::GetMaxRageAttribute());
+
+	ASC->ApplyGameplayEffectToSelf(RestoreEffect, 1.f, ASC->MakeEffectContext());
+}
+
+// Schedules Respawn() once the death montage has finished (+ RespawnDelay)
+void AKwangHeroCharacters::ScheduleRespawn()
+{
+	if (GetWorldTimerManager().IsTimerActive(RespawnTimerHandle)) return;
+
+	const float DeathAnimLength = DeathMontage ? DeathMontage->GetPlayLength() : 0.f;
+	GetWorldTimerManager().SetTimer(RespawnTimerHandle, this, &AKwangHeroCharacters::Respawn, DeathAnimLength + RespawnDelay, false);
+}
+
+void AKwangHeroCharacters::Respawn()
+{
+	// 1. Undo the death state first (death tag, montage, movement, input)
+	UKwangFunctionLibrary::RemoveGameplayTagFromActorIfFound(this, KwangGameplayTags::Shared_Status_Dead);
+	StopAnimMontage(DeathMontage);
+	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		EnableInput(PC);
+	}
+
+	// 2. Then restore stats
+	RestoreStats();
+
+	// 3. Move to the last used checkpoint (also resets enemies), or to the initial position if none was used yet
+	if (LastCheckpoint.IsValid())
+	{
+		LastCheckpoint->RespawnPlayerAtCheckpoint(this);
+	}
+	else
+	{
+		TeleportTo(InitialTransform.GetLocation(), InitialTransform.Rotator());
+		if (AController* PlayerController = GetController())
+		{
+			PlayerController->SetControlRotation(InitialTransform.Rotator());
+		}
+	}
+}
+#pragma endregion
+
+#pragma region Noise
+// Reports a noise event at the player's location (AI hearing). Loudness scales the enemies' hearing range.
+void AKwangHeroCharacters::MakePlayerNoise(float Loudness, FName NoiseTag, float MaxRange)
+{
+	if (Loudness <= 0.f) return;
+	if (UKwangFunctionLibrary::NativeDoesActorHaveTag(this, KwangGameplayTags::Shared_Status_Dead)) return;
+
+	UAISense_Hearing::ReportNoiseEvent(GetWorld(), GetActorLocation(), Loudness, this, MaxRange, NoiseTag);
+}
+
+// Footstep noise: faster movement -> faster steps. Nothing while standing still or in the air.
+void AKwangHeroCharacters::UpdateFootstepNoise(float DeltaTime)
+{
+	const UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	const float Speed = GetVelocity().Size2D();
+
+	if (!MoveComp->IsMovingOnGround() || Speed < MinFootstepSpeed)
+	{
+		FootstepTimer = 0.f;
+		return;
+	}
+
+	const float SpeedRatio = FMath::Clamp(Speed / FMath::Max(MoveComp->MaxWalkSpeed, 1.f), 0.f, 1.5f);
+
+	FootstepTimer += DeltaTime * SpeedRatio;
+	if (FootstepTimer >= FootstepInterval)
+	{
+		FootstepTimer = 0.f;
+		MakePlayerNoise(FootstepLoudness * SpeedRatio, TEXT("Footstep"), NoiseMaxRange);
+	}
+}
+
+// Noise for attack / roll / skill inputs (parent input tags also match their children, e.g. InputTag.LightAttack.Sword)
+void AKwangHeroCharacters::NotifyAbilityNoise(const FGameplayTag& InInputTag)
+{
+	static const FGameplayTag LightAttackTag = FGameplayTag::RequestGameplayTag(FName("InputTag.LightAttack"), false);
+	static const FGameplayTag HeavyAttackTag = FGameplayTag::RequestGameplayTag(FName("InputTag.HeavyAttack"), false);
+	static const FGameplayTag RollTag = FGameplayTag::RequestGameplayTag(FName("InputTag.Roll"), false);
+	static const FGameplayTag SkillTag = FGameplayTag::RequestGameplayTag(FName("InputTag.Skill"), false);
+
+	if (InInputTag.MatchesTag(LightAttackTag) || InInputTag.MatchesTag(HeavyAttackTag))
+	{
+		MakePlayerNoise(AttackLoudness, TEXT("Attack"), NoiseMaxRange);
+	}
+	else if (InInputTag.MatchesTag(RollTag))
+	{
+		MakePlayerNoise(RollLoudness, TEXT("Roll"), NoiseMaxRange);
+	}
+	else if (InInputTag.MatchesTag(SkillTag))
+	{
+		MakePlayerNoise(SkillLoudness, TEXT("Skill"), NoiseMaxRange);
+	}
+}
+#pragma endregion
 
 //void AKwangHeroCharacters::PossessedBy(AController* NewController)
 //{
-//	 1. ºÎ¸ğ Å¬·¡½ºÀÇ ±âº» ºùÀÇ ·ÎÁ÷À» ¸ÕÀú ½ÇÇàÇØ¼­ »À´ë ¼¼ÆÃ
+//	 1. ë¶€ëª¨ í´ë˜ìŠ¤ì˜ ê¸°ë³¸ ë¹™ì˜ ë¡œì§ì„ ë¨¼ì € ì‹¤í–‰í•´ì„œ ë¼ˆëŒ€ ì„¸íŒ…
 //	Super::PossessedBy(NewController);	
 //
-//	 2. ³» Ä³¸¯ÅÍ¿¡°Ô ³ú(ASC)¿Í ½ÉÀå(AttributeSet)ÀÌ ¼º°øÀûÀ¸·Î »ı¼ºµÇ¾î ÀÖ´ÂÁö ¾ÈÀü °Ë»ç
+//	 2. ë‚´ ìºë¦­í„°ì—ê²Œ ë‡Œ(ASC)ì™€ ì‹¬ì¥(AttributeSet)ì´ ì„±ê³µì ìœ¼ë¡œ ìƒì„±ë˜ì–´ ìˆëŠ”ì§€ ì•ˆì „ ê²€ì‚¬
 //	if (KwangAbilitySystemComponent && KwangAttributeSet)
 //	{
-//		 3. FString::Printf¸¦ »ç¿ëÇØ ¹®ÀåÀ» Á¶¸³
-//		 µ¥ÀÌÅÍÀÇ ÁøÂ¥ ÁÖÀÎ(Owner)Àº ´©±¸°í, ¿ùµå¿¡¼­ ¶Ù³ë´Â ²®µ¥±â(Avatar)´Â ´©±¸ÀÎ°¡
+//		 3. FString::Printfë¥¼ ì‚¬ìš©í•´ ë¬¸ì¥ì„ ì¡°ë¦½
+//		 ë°ì´í„°ì˜ ì§„ì§œ ì£¼ì¸(Owner)ì€ ëˆ„êµ¬ê³ , ì›”ë“œì—ì„œ ë›°ë…¸ëŠ” ê»ë°ê¸°(Avatar)ëŠ” ëˆ„êµ¬ì¸ê°€
 //		const FString ASCText = FString::Printf(TEXT("Owner Actor : %s, Avartar Actor : %s"), 
-//			*KwangAbilitySystemComponent->GetOwnerActor()->GetActorLabel(),	 // µ¥ÀÌÅÍ ÁÖÀÎ ÀÌ¸§
-//			*KwangAbilitySystemComponent->GetAvatarActor()->GetActorLabel()); // ¹°¸®Àû ²®µ¥±â ÀÌ¸§
+//			*KwangAbilitySystemComponent->GetOwnerActor()->GetActorLabel(),	 // ë°ì´í„° ì£¼ì¸ ì´ë¦„
+//			*KwangAbilitySystemComponent->GetAvatarActor()->GetActorLabel()); // ë¬¼ë¦¬ì  ê»ë°ê¸° ì´ë¦„
 //
-//		 4. È­¸é ¿ŞÂÊ À§¿¡ ÃÊ·Ï»ö(FColor::Green) ±Û¾¾·Î ¼º°ø ¸Ş½ÃÁö¿Í ÀÌ¸§À» ¶ç¿öÁÜ
+//		 4. í™”ë©´ ì™¼ìª½ ìœ„ì— ì´ˆë¡ìƒ‰(FColor::Green) ê¸€ì”¨ë¡œ ì„±ê³µ ë©”ì‹œì§€ì™€ ì´ë¦„ì„ ë„ì›Œì¤Œ
+//		Debug::Print(TEXT("Ability system component valid ") + ASCText, FColor::Green); 
+//		Debug::Print(TEXT("AttributeSet valid ") + ASCText, FColor::Green); 
+//	}
+//}
+
+//void AKwangHeroCharacters::PossessedBy(AController* NewController)
+//{
+//	 1. ë¶€ëª¨ í´ë˜ìŠ¤ì˜ ê¸°ë³¸ ë¹™ì˜ ë¡œì§ì„ ë¨¼ì € ì‹¤í–‰í•´ì„œ ë¼ˆëŒ€ ì„¸íŒ…
+//	Super::PossessedBy(NewController);	
+//
+//	 2. ë‚´ ìºë¦­í„°ì—ê²Œ ë‡Œ(ASC)ì™€ ì‹¬ì¥(AttributeSet)ì´ ì„±ê³µì ìœ¼ë¡œ ìƒì„±ë˜ì–´ ìˆëŠ”ì§€ ì•ˆì „ ê²€ì‚¬
+//	if (KwangAbilitySystemComponent && KwangAttributeSet)
+//	{
+//		 3. FString::Printfë¥¼ ì‚¬ìš©í•´ ë¬¸ì¥ì„ ì¡°ë¦½
+//		 ë°ì´í„°ì˜ ì§„ì§œ ì£¼ì¸(Owner)ì€ ëˆ„êµ¬ê³ , ì›”ë“œì—ì„œ ë›°ë…¸ëŠ” ê»ë°ê¸°(Avatar)ëŠ” ëˆ„êµ¬ì¸ê°€
+//		const FString ASCText = FString::Printf(TEXT("Owner Actor : %s, Avartar Actor : %s"), 
+//			*KwangAbilitySystemComponent->GetOwnerActor()->GetActorLabel(),	 // ë°ì´í„° ì£¼ì¸ ì´ë¦„
+//			*KwangAbilitySystemComponent->GetAvatarActor()->GetActorLabel()); // ë¬¼ë¦¬ì  ê»ë°ê¸° ì´ë¦„
+//
+//		 4. í™”ë©´ ì™¼ìª½ ìœ„ì— ì´ˆë¡ìƒ‰(FColor::Green) ê¸€ì”¨ë¡œ ì„±ê³µ ë©”ì‹œì§€ì™€ ì´ë¦„ì„ ë„ì›Œì¤Œ
 //		Debug::Print(TEXT("Ability system component valid ") + ASCText, FColor::Green); 
 //		Debug::Print(TEXT("AttributeSet valid ") + ASCText, FColor::Green); 
 //	}

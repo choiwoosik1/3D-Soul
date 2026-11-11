@@ -115,8 +115,12 @@ void UKwangAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 				}
 				// 이동 막기
 				Hero->GetCharacterMovement()->DisableMovement();
+
 				// 입력 막기
 				Hero->DisableInput(nullptr);
+
+				// respawn at the last checkpoint after the death sequence
+				Hero->ScheduleRespawn();
 			}
 		}
 	}
