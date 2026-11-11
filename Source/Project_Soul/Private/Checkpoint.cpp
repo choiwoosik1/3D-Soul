@@ -1,6 +1,7 @@
 #include "Checkpoint.h"
 #include "Widgets/CheckpointMenuWidget.h"
 #include "Enemy/Enemy.h"
+#include "Characters/KwangHeroCharacters.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -72,7 +73,10 @@ void ACheckpoint::Interact()
 	bActivated = true;
 
 	// 플레이어 회복
-	// Player->RestAtCheckpoint(this);
+	if (AKwangHeroCharacters* Player = Cast<AKwangHeroCharacters>(UGameplayStatics::GetPlayerCharacter(this, 0)))
+	{
+		Player->RestAtCheckpoint(this);
+	}
 
 	ResetEnemies();
 

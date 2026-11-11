@@ -16,6 +16,7 @@ struct FInputActionValue;
 class UHeroCombatComponent;
 class UHeroUIComponent;
 class UGameplayEffect;
+class ACheckpoint;
 
 UCLASS()
 class PROJECT_SOUL_API AKwangHeroCharacters : public AKwangBaseCharacters
@@ -50,6 +51,9 @@ protected:
 	virtual void BeginPlay() override;
 
 	virtual void Tick(float DeltaTime) override;
+
+	// Landing makes noise (AI hearing)
+	virtual void Landed(const FHitResult& Hit) override;
 
 private:
 	// #pragma region: Visual Studio에서 코드를 접었다 펼칠 수 있게 해주는 단순 UI 기능
@@ -140,6 +144,59 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Combat")
 	UAnimMontage* DeathMontage;
 
+
+#pragma region Checkpoint
+public:
+	// Called by ACheckpoint when the player interacts with it (E key): remembers it and restores stats
+	void RestAtCheckpoint(ACheckpoint* Checkpoint);
+
+	// Called when the death sequence finishes: undoes the death state, restores stats, moves to the last checkpoint
+	void Respawn();
+
+	// Called when the hero dies (KwangAttributeSet): calls Respawn() after the death montage + RespawnDelay
+	void ScheduleRespawn();
+
+	// Extra wait (seconds) after the death montage before respawning
+	UPROPERTY(EditAnywhere, Category = "Respawn")
+	float RespawnDelay = 3.f;
+#pragma endregion
+
+#pragma region Noise
+public:
+	// Reports a noise event to the AI hearing sense. Loudness scales the enemies' hearing range,
+	// MaxRange 0 = no extra limit. Also callable from Blueprints / abilities.
+	UFUNCTION(BlueprintCallable, Category = "Noise")
+	void MakePlayerNoise(float Loudness, FName NoiseTag = NAME_None, float MaxRange = 0.f);
+
+	// ---- Noise tuning (designer values, tweak freely) ----
+	UPROPERTY(EditAnywhere, Category = "Noise")
+	float FootstepLoudness = 0.5f;
+
+	// Seconds between footsteps while moving at full walk speed
+	UPROPERTY(EditAnywhere, Category = "Noise")
+	float FootstepInterval = 0.45f;
+
+	// No footstep noise below this speed (cm/s)
+	UPROPERTY(EditAnywhere, Category = "Noise")
+	float MinFootstepSpeed = 50.f;
+
+	UPROPERTY(EditAnywhere, Category = "Noise")
+	float LandingLoudness = 0.8f;
+
+	UPROPERTY(EditAnywhere, Category = "Noise")
+	float AttackLoudness = 1.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Noise")
+	float RollLoudness = 0.7f;
+
+	UPROPERTY(EditAnywhere, Category = "Noise")
+	float SkillLoudness = 1.2f;
+
+	// 0 = unlimited (the enemy's own HearingRange still applies)
+	UPROPERTY(EditAnywhere, Category = "Noise")
+	float NoiseMaxRange = 0.f;
+#pragma endregion
+
 private:
 	bool bIsInvincible = false;
 	FTimerHandle GuardBrokenMontageTimerHandle;
@@ -152,6 +209,22 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "Block")
 	float BlockEnemySearchRadius = 1500.f;
+
+	// ---- Checkpoint ----
+	void RestoreStats();
+
+	TWeakObjectPtr<ACheckpoint> LastCheckpoint;
+
+	// Fallback respawn position when no checkpoint has been used yet
+	FTransform InitialTransform;
+
+	FTimerHandle RespawnTimerHandle;
+
+	// ---- Noise ----
+	void UpdateFootstepNoise(float DeltaTime);
+	void NotifyAbilityNoise(const FGameplayTag& InInputTag);
+
+	float FootstepTimer = 0.f;
 };
 #pragma endregion
 

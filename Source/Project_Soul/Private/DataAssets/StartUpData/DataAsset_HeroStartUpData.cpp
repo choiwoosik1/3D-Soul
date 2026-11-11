@@ -4,6 +4,7 @@
 #include "DataAssets/StartUpData/DataAsset_HeroStartUpData.h"
 #include "AbilitySystem/Abilities/KwangGameplayAbility.h"
 #include "AbilitySystem/KwangAbilitySystemComponent.h"
+#include "AbilitySystem/Abilities/KwangHeroGameplayAbility.h"
 
 // 2. [스킬 주입 실행부] 데이터 애셋에 적힌 스킬들을 캐릭터의 뇌(ASC)에 밀어 넣는 작업
 void UDataAsset_HeroStartUpData::GiveToAbilitySystemComponent(UKwangAbilitySystemComponent* InASCToGive, int32 ApplyLevel)
