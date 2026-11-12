@@ -1,7 +1,7 @@
 #include "Enemy/NormalEnemy_Stage3_JoseonArmored.h"
+#include "AIController.h"
 #include "Components/BoxComponent.h"
 #include "Delegates/Delegate.h"
-#include "AIController.h"
 
 // Sets default values
 ANormalEnemy_Stage3_JoseonArmored::ANormalEnemy_Stage3_JoseonArmored()

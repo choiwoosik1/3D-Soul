@@ -1,8 +1,8 @@
 #include "Enemy/NormalEnemy_Stage2_Sambyeolcho.h"
-#include "GameFramework/CharacterMovementComponent.h"
+#include "AIController.h"
 #include "Components/BoxComponent.h"
 #include "Delegates/Delegate.h"
-#include "AIController.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
 ANormalEnemy_Stage2_Sambyeolcho::ANormalEnemy_Stage2_Sambyeolcho()

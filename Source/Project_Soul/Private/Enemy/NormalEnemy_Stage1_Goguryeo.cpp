@@ -1,9 +1,41 @@
 #include "Enemy/NormalEnemy_Stage1_Goguryeo.h"
 #include "Enemy/Projectile.h"
+#include "AIController.h"
 #include "Components/BoxComponent.h"
 #include "Delegates/Delegate.h"
-#include "AIController.h"
+#include "DrawDebugHelpers.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "TimerManager.h"
+
+namespace
+{
+	// Smallest positive t solving |ToTarget + TargetVelocity * t| = ProjectileSpeed * t.
+	// Falls back to straight-line flight time when no intercept exists.
+	float ComputeInterceptTime(const FVector& ToTarget, const FVector& TargetVelocity, float ProjectileSpeed)
+	{
+		const float A = TargetVelocity.SizeSquared() - ProjectileSpeed * ProjectileSpeed;
+		const float B = 2.f * FVector::DotProduct(ToTarget, TargetVelocity);
+		const float C = ToTarget.SizeSquared();
+		const float Fallback = ToTarget.Size() / ProjectileSpeed;
+
+		if (FMath::IsNearlyZero(A))
+		{
+			return B < 0.f ? -C / B : Fallback;
+		}
+
+		const float Discriminant = B * B - 4.f * A * C;
+		if (Discriminant < 0.f) return Fallback;
+
+		const float Root = FMath::Sqrt(Discriminant);
+		const float T1 = (-B - Root) / (2.f * A);
+		const float T2 = (-B + Root) / (2.f * A);
+
+		if (T1 > 0.f && T2 > 0.f) return FMath::Min(T1, T2);
+		if (T1 > 0.f) return T1;
+		if (T2 > 0.f) return T2;
+		return Fallback;
+	}
+}
 
 // Sets default values
 ANormalEnemy_Stage1_Goguryeo::ANormalEnemy_Stage1_Goguryeo()
@@ -58,56 +90,118 @@ void ANormalEnemy_Stage1_Goguryeo::DecideNextAction()
 	}
 }
 
-// Fire a projectile towards the target, calculating the lead based on the target's velocity to increase hit accuracy
+// Fire a projectile at the predicted intercept point, shifted sideways by the learned dodge habit,
+// and schedule a dodge sample at the moment the projectile is expected to arrive
 void ANormalEnemy_Stage1_Goguryeo::FireProjectile_Implementation()
 {
 	if (!ProjectileClass) return;
+	if (!Patterns.IsValidIndex(PatternIdx) || !Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
 
-	FVector MuzzleLocation = LeftWeaponMesh->GetSocketLocation(MuzzleSocketName);
+	// Capture the swing before AttackIdx advances; the delayed sample must be learned for this swing
+	const int32 FiredPatternIdx = PatternIdx;
+	const int32 FiredAttackIdx = AttackIdx++;
+	const FAttackProperties& Attack = Patterns[FiredPatternIdx].Attacks[FiredAttackIdx];
+
+	const float Speed = FMath::Max(ProjectileSpeed, 1.f);
+	const FVector MuzzleLocation = LeftWeaponMesh->GetSocketLocation(MuzzleSocketName);
 	FRotator FireRotation = LeftWeaponMesh->GetSocketRotation(MuzzleSocketName);
+	FVector PredictedOffset = FVector::ZeroVector;
 
 	AAIController* AIC = Cast<AAIController>(GetController());
-	if (AIC && AIC->GetFocusActor())
+	AActor* Target = AIC ? AIC->GetFocusActor() : nullptr;
+	if (Target)
 	{
-		// Calculate lead for moving targets
-		FVector TargetLocation = AIC->GetFocusActor()->GetActorLocation();
-		FVector TargetVelocity = AIC->GetFocusActor()->GetVelocity();
-		float Distance = FVector::Dist(MuzzleLocation, TargetLocation);
-		float TimeToTarget = Distance / ProjectileSpeed;
-		FVector PredictedLocation = TargetLocation + TargetVelocity * TimeToTarget / 1.7f;
+		const FVector TargetLocation = Target->GetActorLocation();
+		const FVector RawVelocity = Target->GetVelocity();
 
+		// Roll speed lasts only for the roll, so extrapolating it over the flight overshoots;
+		// a target rolling at fire time is aimed a fixed distance along the roll direction instead
+		const bool bTargetRolling = RawVelocity.Size2D() > DodgeSpeedThreshold;
+		float LeadTime = 0.f;
+		FVector Intercept;
+
+		if (bTargetRolling)
+		{
+			Intercept = TargetLocation + RawVelocity.GetSafeNormal2D() * RollLeadDistance;
+		}
+		else
+		{
+			// Horizontal velocity only, clamped so falls are not extrapolated
+			const FVector LeadVelocity = FVector(RawVelocity.X, RawVelocity.Y, 0.f).GetClampedToMaxSize(MaxLeadSpeed);
+			LeadTime = FMath::Min(ComputeInterceptTime(TargetLocation - MuzzleLocation, LeadVelocity, Speed), MaxLeadTime);
+			Intercept = TargetLocation + LeadVelocity * LeadTime;
+		}
+
+		// Attack axis for dodge learning: horizontal direction from the muzzle to the predicted point
+		const FVector Forward = (Intercept - MuzzleLocation).GetSafeNormal2D();
+		const FVector Right = FVector::CrossProduct(FVector::UpVector, Forward);
+
+		// Consecutive shots form the sequence: predict from how the target dodged the last learned shot.
+		// The fixed roll distance already covers the dodge, so the learned shift is not added on top of it.
+		const int32 PrevBucket = LastShotBucket;
+		const FVector AimLocation = bTargetRolling ? Intercept : ApplyAimOffset(Intercept, Forward, Attack, PrevBucket);
+		const float ShiftRight = FVector::DotProduct(AimLocation - Intercept, Right);
+		PredictedOffset = AimLocation - TargetLocation;
+
+		FireRotation = (AimLocation - MuzzleLocation).Rotation();
+
+		// Debug: blue = target now, yellow = predicted point, green = corrected aim (remove once tuned)
 		DrawDebugSphere(GetWorld(), TargetLocation, 20.f, 12, FColor::Blue, false, 3.f);
-		DrawDebugSphere(GetWorld(), PredictedLocation, 20.f, 12, FColor::Yellow, false, 3.f);
+		DrawDebugSphere(GetWorld(), Intercept, 20.f, 12, FColor::Yellow, false, 3.f);
+		DrawDebugSphere(GetWorld(), AimLocation, 20.f, 12, FColor::Green, false, 3.f);
 
-		// Record attack location
-		PlayerActionRecord.SetAttackDirection(PredictedLocation);
+		// Sample where the target actually is when the projectile is expected to arrive,
+		// measured from the uncorrected predicted point so the correction never feeds back into the data
+		FAttackSample Sample;
+		Sample.Begin(FiredPatternIdx, FiredAttackIdx, Forward, Intercept, PrevBucket);
 
-		// Add player dodge prediction
-		PredictedLocation += GetActorTransform().TransformVectorNoScale(PlayerActionRecord.GetCorrectedOffset());
+		const float FlightTime = FMath::Max(FVector::Dist(MuzzleLocation, AimLocation) / Speed, 0.05f);
+		const float Distance = FVector::Dist(MuzzleLocation, TargetLocation);
+		const float RawSpeed = RawVelocity.Size2D();
+		const TWeakObjectPtr<AActor> WeakTarget = Target;
 
-		DrawDebugSphere(GetWorld(), PredictedLocation, 20.f, 12, FColor::Green, false, 3.f);
-		
-		FireRotation = (PredictedLocation - MuzzleLocation).Rotation();
+		FTimerHandle SampleHandle;
+		GetWorldTimerManager().SetTimer(SampleHandle, FTimerDelegate::CreateWeakLambda(this,
+			[this, Sample, Right, WeakTarget, Distance, RawSpeed, LeadTime, ShiftRight, FlightTime, bTargetRolling]() mutable
+			{
+				const AActor* SampledTarget = WeakTarget.Get();
+				if (!SampledTarget) return;
+
+				const FVector Actual = SampledTarget->GetActorLocation();
+				const FVector Error = Actual - Sample.Origin;
+				const float ErrorForward = FVector::DotProduct(Error, Sample.Forward);
+				const float ErrorRight = FVector::DotProduct(Error, Right);
+
+				// Debug: red = target when the projectile should arrive; red vs yellow is the prediction error
+				DrawDebugSphere(GetWorld(), Actual, 20.f, 12, FColor::Red, false, 3.f);
+
+				// MissR = lateral miss of the aim point (with homing on, not the actual miss)
+				UE_LOG(LogTemp, Warning, TEXT("ShotSample\tRoll=%d\tDist=%.0f\tSpeed=%.0f\tLeadT=%.2f\tShiftR=%.0f\tErrF=%.0f\tErrR=%.0f\tMissR=%.0f"),
+					bTargetRolling, Distance, RawSpeed, LeadTime, ShiftRight, ErrorForward, ErrorRight, ErrorRight - ShiftRight);
+
+				// Rolling shots are aimed by the fixed roll distance and measure a different thing; keep them out of the stats
+				if (bTargetRolling) return;
+
+				// Discard samples no dodge could produce within this flight time (teleports, respawns)
+				if (FMath::Abs(ErrorRight) > MaxDodgeSpeed * FlightTime) return;
+
+				// A straight shot can only be corrected sideways, so learn the lateral component only
+				Sample.ResolvedLocation = Sample.Origin + Right * ErrorRight;
+				LastShotBucket = RecordSample(Sample);
+			}), FlightTime, false);
 	}
 
-	// Spawn the projectile with the calculated rotation and set its velocity
+	// Spawn the projectile with the calculated rotation
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
 	SpawnParams.Instigator = this;
 
-	AActor* Projectile = GetWorld()->SpawnActor<AActor>(ProjectileClass, MuzzleLocation, FireRotation, SpawnParams);
-	
-	// Set projectile damage and activate its movement component to propel it forward
-	if (Projectile)
-	{
-		float multiplier = Patterns[PatternIdx].Attacks[AttackIdx++].DamageMultiplier;
-		Cast<AProjectile>(Projectile)->SetDamage(BaseDamage* multiplier);
+	AProjectile* Projectile = GetWorld()->SpawnActor<AProjectile>(ProjectileClass, MuzzleLocation, FireRotation, SpawnParams);
+	if (!Projectile) return;
 
-		UProjectileMovementComponent* ProjectileMovement = Projectile->FindComponentByClass<UProjectileMovementComponent>();
-		if (ProjectileMovement)
-		{
-			ProjectileMovement->SetVelocityInLocalSpace(FVector::ForwardVector * ProjectileMovement->InitialSpeed);
-			ProjectileMovement->Activate();
-		}
-	}
+	Projectile->SetDamage(BaseDamage * Attack.DamageMultiplier);
+
+	Projectile->InitHoming(Target, PredictedOffset);
+
+	Projectile->Launch(FireRotation.Vector(), Speed);
 }

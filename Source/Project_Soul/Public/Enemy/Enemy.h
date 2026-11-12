@@ -128,6 +128,12 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "AI")
 	FPlayerActionRecord PlayerActionRecord;
 
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float MaxApplyChance = 1.f;
+
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
+	float MaxAimShift = 500.f;
+
 	// Animation montages
 
 	UPROPERTY(EditAnywhere, Category = "Animation")
@@ -158,6 +164,10 @@ protected:
 	virtual void BeginPlay() override;
 
 	void SetCharacterState(EEnemyState NewState);
+
+	FVector ApplyAimOffset(const FVector& BaseLocation, const FVector& Forward, const FAttackProperties& Attack, int32 PrevBucket) const;
+
+	int32 RecordSample(const FAttackSample& Sample);
 
 	void InterruptCurrentAttack();
 

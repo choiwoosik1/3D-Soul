@@ -1,8 +1,8 @@
 #include "Enemy/NormalEnemy_Stage3_Musketeer.h"
 #include "Enemy/Projectile.h"
+#include "AIController.h"
 #include "Components/BoxComponent.h"
 #include "Delegates/Delegate.h"
-#include "AIController.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
 // Sets default values
@@ -61,53 +61,5 @@ void ANormalEnemy_Stage3_Musketeer::DecideNextAction()
 // Fire a projectile towards the target, calculating the lead based on the target's velocity to increase hit accuracy
 void ANormalEnemy_Stage3_Musketeer::FireProjectile_Implementation()
 {
-	if (!ProjectileClass) return;
-
-	FVector MuzzleLocation = LeftWeaponMesh->GetSocketLocation(MuzzleSocketName);
-	FRotator FireRotation = LeftWeaponMesh->GetSocketRotation(MuzzleSocketName);
-
-	AAIController* AIC = Cast<AAIController>(GetController());
-	if (AIC && AIC->GetFocusActor())
-	{
-		// Calculate lead for moving targets
-		FVector TargetLocation = AIC->GetFocusActor()->GetActorLocation();
-		FVector TargetVelocity = AIC->GetFocusActor()->GetVelocity();
-		float Distance = FVector::Dist(MuzzleLocation, TargetLocation);
-		float TimeToTarget = Distance / ProjectileSpeed;
-		FVector PredictedLocation = TargetLocation + TargetVelocity * TimeToTarget / 1.7f;
-
-		DrawDebugSphere(GetWorld(), TargetLocation, 20.f, 12, FColor::Blue, false, 3.f);
-		DrawDebugSphere(GetWorld(), PredictedLocation, 20.f, 12, FColor::Yellow, false, 3.f);
-
-		// Record attack location
-		PlayerActionRecord.SetAttackDirection(PredictedLocation);
-
-		// Add player dodge prediction
-		PredictedLocation += GetActorTransform().TransformVectorNoScale(PlayerActionRecord.GetCorrectedOffset());
-
-		DrawDebugSphere(GetWorld(), PredictedLocation, 20.f, 12, FColor::Green, false, 3.f);
-
-		FireRotation = (PredictedLocation - MuzzleLocation).Rotation();
-	}
-
-	// Spawn the projectile with the calculated rotation and set its velocity
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = this;
-	SpawnParams.Instigator = this;
-
-	AActor* Projectile = GetWorld()->SpawnActor<AActor>(ProjectileClass, MuzzleLocation, FireRotation, SpawnParams);
-
-	// Set projectile damage and activate its movement component to propel it forward
-	if (Projectile)
-	{
-		float multiplier = Patterns[PatternIdx].Attacks[AttackIdx++].DamageMultiplier;
-		Cast<AProjectile>(Projectile)->SetDamage(BaseDamage * multiplier);
-
-		UProjectileMovementComponent* ProjectileMovement = Projectile->FindComponentByClass<UProjectileMovementComponent>();
-		if (ProjectileMovement)
-		{
-			ProjectileMovement->SetVelocityInLocalSpace(FVector::ForwardVector * ProjectileSpeed);
-			ProjectileMovement->Activate();
-		}
-	}
+	
 }

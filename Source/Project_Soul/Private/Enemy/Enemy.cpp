@@ -3,6 +3,7 @@
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "DrawDebugHelpers.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -99,13 +100,6 @@ void AEnemy::SetCharacterState(EEnemyState NewState)
             BBComp->ClearValue(FName("Destination"));
             break;
     }
-}
-
-// Interrupt the current attack, disable the weapon hitbox, and prevent parrying
-void AEnemy::InterruptCurrentAttack()
-{
-    DisableWeaponHitbox();
-    bCanBeParried = false;
 }
 
 // Adjust the character's movement speed in combat state based on the distance to the target
@@ -260,6 +254,10 @@ void AEnemy::PerformAttackPattern(int32 AttackPatternIdx)
     PatternIdx = AttackPatternIdx;
 	AttackIdx = 0;
 
+    // A new combo starts without a previous dodge
+    PlayerActionRecord.PatternPrevBucket = INDEX_NONE;
+    PlayerActionRecord.PendingSample.bActive = false;
+
 	// Play the attack montage associated with the selected attack pattern
     UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
     if (AnimInstance && Patterns[PatternIdx].Montage)
@@ -275,6 +273,17 @@ void AEnemy::FinishAttackPattern()
     ResumeCombat();
 }
 
+// Interrupt the current attack, disable the weapon hitbox, and prevent parrying
+void AEnemy::InterruptCurrentAttack()
+{
+    // Discard the pending dodge sample so an interrupted attack is never learned as a dodge
+    PlayerActionRecord.PendingSample.bActive = false;
+    PlayerActionRecord.PatternPrevBucket = INDEX_NONE;
+
+    bCanBeParried = false;
+    DisableWeaponHitbox();
+}
+
 // Enable the weapon hitbox for the current attack
 void AEnemy::EnableWeaponHitbox()
 {
@@ -285,29 +294,30 @@ void AEnemy::EnableWeaponHitbox()
 	LeftWeaponHitbox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 }
 
-// Disable the weapon hitbox after the attack ends, and record the player's dodge direction if the attack was missed
+// Disable the weapon hitbox after the attack ends, and learn where the target went if a lunge was tracked
 void AEnemy::DisableWeaponHitbox()
 {
     if (RightWeaponHitbox->GetCollisionEnabled() == ECollisionEnabled::NoCollision) return;
 
     RightWeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	LeftWeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    LeftWeaponHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
     if (!Patterns.IsValidIndex(PatternIdx) || !Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
 
-    // Record player dodge vector if the attack was missed
-    if ((AlreadyHitActors.Num() <= 0) && Patterns[PatternIdx].Attacks[AttackIdx].MovementSpeed > 0)
+    // Resolve the pending lunge sample: where did the target end up compared to where it stood at commit time?
+    FAttackSample& Sample = PlayerActionRecord.PendingSample;
+    AAIController* AIC = Cast<AAIController>(GetController());
+    if (Sample.bActive && AIC && AIC->GetFocusActor())
     {
-        AAIController* AIC = Cast<AAIController>(GetController());
-        if (AIC && AIC->GetFocusActor())
-        {
-            // Vector from enemy to player
-			FVector ToPlayer = AIC->GetFocusActor()->GetActorLocation() - GetActorLocation();
-            // Transform the vector to the attack's local space to determine dodge direction
-			FVector ToPlayerDir = PlayerActionRecord.GetAttackTransform().TransformVector(ToPlayer); 
-            PlayerActionRecord.RecordDodge(ToPlayerDir);
-        }
+        Sample.ResolvedLocation = AIC->GetFocusActor()->GetActorLocation();
+        
+		// Log the result of the lunge attack, including pattern index, attack index, and whether any actors were hit
+        UE_LOG(LogTemp, Warning, TEXT("LungeResult P=%d A=%d Hit=%d"), PatternIdx, AttackIdx, AlreadyHitActors.Num() > 0);
+
+        // The next lunge of this combo is predicted from this dodge
+        PlayerActionRecord.PatternPrevBucket = RecordSample(Sample);
     }
+    Sample.bActive = false;
 
     AlreadyHitActors.Empty();
     AttackIdx++;
@@ -342,8 +352,8 @@ void AEnemy::OnWeaponHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActor* 
 
     UGameplayStatics::ApplyDamage(OtherActor, Damage, GetController(), this, GuardResponseType);
 
-    UE_LOG(LogTemp, Warning, TEXT("Hit: %s / Pattern: %d / Attack: %d / Damage: %.1f / Guard Response: %s"),
-        *OtherActor->GetName(), PatternIdx, AttackIdx, Damage, *GuardResponseType->GetName());
+    // UE_LOG(LogTemp, Warning, TEXT("Hit: %s / Pattern: %d / Attack: %d / Damage: %.1f / Guard Response: %s"),
+    //     *OtherActor->GetName(), PatternIdx, AttackIdx, Damage, *GuardResponseType->GetName());
 }
 
 // Enable rotation during an attack, adjusting rotation speed based on the attack properties
@@ -369,35 +379,99 @@ void AEnemy::DisableAttackRotation()
     GetCharacterMovement()->RotationRate = FRotator::ZeroRotator;
 }
 
-// Enable movement during an attack, recording forward vector to calculate player dodge direction
+// Enable movement during an attack, aiming at the target position corrected by the learned dodge offset
 void AEnemy::EnableAttackMovement()
 {
     if (!Patterns.IsValidIndex(PatternIdx) || !Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
     const FAttackProperties& Attack = Patterns[PatternIdx].Attacks[AttackIdx];
 
-	if (Attack.MovementSpeed > 0.f)
+    if (Attack.MovementSpeed <= 0.f) return;
+
+    AAIController* AIC = Cast<AAIController>(GetController());
+    AActor* Target = AIC ? AIC->GetFocusActor() : nullptr;
+    if (!Target) return;
+
+    const FVector TargetLocation = Target->GetActorLocation();
+    FAttackSample& Sample = PlayerActionRecord.PendingSample;
+
+    // The sample and the correction are decided once, on the first call of the swing
+    const bool bReAim = Sample.bActive && Sample.PatternIdx == PatternIdx && Sample.AttackIdx == AttackIdx;
+    if (!bReAim)
     {
-        // Record attack movement direction vector
-        PlayerActionRecord.SetAttackDirection(GetActorForwardVector()); 
+        // Attack axis: horizontal direction from this enemy to the target at commit time
+        const FVector Forward = (TargetLocation - GetActorLocation()).GetSafeNormal2D();
 
-		AAIController* AIC = Cast<AAIController>(GetController());
-        if (!AIC || !AIC->GetFocusActor()) return;
-        
-        GetCharacterMovement()->MaxWalkSpeed = Attack.MovementSpeed;
-
-        FVector TargetLocation = AIC->GetFocusActor()->GetActorLocation();
-            
-        // Add predicted player dodge location
-        TargetLocation += GetActorTransform().TransformVectorNoScale(PlayerActionRecord.GetCorrectedOffset());
-
-        AIC->MoveToLocation(TargetLocation, MinCombatRange);       
+        // Predict from how the target dodged the previous lunge of this combo
+        Sample.Begin(PatternIdx, AttackIdx, Forward, TargetLocation, PlayerActionRecord.PatternPrevBucket);
+        Sample.AimShift = ApplyAimOffset(TargetLocation, Forward, Attack, Sample.PrevBucket) - TargetLocation;
     }
+
+    // Re-aims track the target but add only the part of the predicted dodge it has not covered yet,
+    // so a target already dodging as predicted is not corrected twice
+    const FVector ShiftDir = Sample.AimShift.GetSafeNormal2D();
+    const float ShiftSize = Sample.AimShift.Size2D();
+    const float Covered = FVector::DotProduct(TargetLocation - Sample.Origin, ShiftDir);
+    const float Remaining = FMath::Clamp(ShiftSize - Covered, 0.f, ShiftSize);
+    const FVector AimLocation = TargetLocation + ShiftDir * Remaining;
+
+    GetCharacterMovement()->MaxWalkSpeed = Attack.MovementSpeed;
+
+    // Debug: remove after tuning
+    const FVector Right = FVector::CrossProduct(FVector::UpVector, Sample.Forward);
+    UE_LOG(LogTemp, Warning, TEXT("LungeAim P=%d A=%d ReAim=%d Prev=%d ShiftF=%.0f ShiftR=%.0f Remaining=%.0f"),
+        PatternIdx, AttackIdx, bReAim, Sample.PrevBucket,
+        FVector::DotProduct(Sample.AimShift, Sample.Forward), FVector::DotProduct(Sample.AimShift, Right), Remaining);
+
+    // Debug: blue = target at commit time, green = corrected aim (remove once tuned)
+    DrawDebugSphere(GetWorld(), TargetLocation, 20.f, 12, FColor::Blue, false, 3.f);
+    DrawDebugSphere(GetWorld(), AimLocation, 20.f, 12, FColor::Green, false, 3.f);
+
+    // The shifted aim may be off the navmesh (walls, ledges), so project it to avoid a failed move request
+    AIC->MoveToLocation(AimLocation, MinCombatRange, true, true, true);
 }
 
 // Disable movement during an attack, setting walk speed to zero
 void AEnemy::DisableAttackMovement()
 {
     GetCharacterMovement()->MaxWalkSpeed = 0.f;
+}
+
+// Shift BaseLocation by the predicted dodge offset of this swing (only rolls the dice, changes no state)
+FVector AEnemy::ApplyAimOffset(const FVector& BaseLocation, const FVector& Forward, const FAttackProperties& Attack, int32 PrevBucket) const
+{
+    FVector2D Offset;
+    float Confidence = 0.f;
+    if (!Attack.DodgeStats.Query(PlayerActionRecord.DodgeFallback, PrevBucket, Offset, Confidence)) return BaseLocation;
+
+    // Aiming short of the target makes the lunge stop out of reach, while aiming past it still connects
+    Offset.X = FMath::Max(Offset.X, 0.f);
+
+    // Apply the correction only some of the time so the enemy never becomes fully deterministic
+    if (FMath::FRand() > Confidence * MaxApplyChance) return BaseLocation;
+
+    const FVector Right = FVector::CrossProduct(FVector::UpVector, Forward);
+    const FVector Shift = Forward * Offset.X + Right * Offset.Y;
+    return BaseLocation + Shift.GetClampedToMaxSize(MaxAimShift);
+}
+
+// Single entry point for attack outcomes: converts the target's displacement to attack-axis space
+// and learns it for the swing that produced the sample. Returns the recorded dodge bucket.
+int32 AEnemy::RecordSample(const FAttackSample& Sample)
+{
+    if (!Patterns.IsValidIndex(Sample.PatternIdx) || !Patterns[Sample.PatternIdx].Attacks.IsValidIndex(Sample.AttackIdx)) return INDEX_NONE;
+
+    // A hit staggers the target in place, so the resolved position is the real dodge distance whether or not it landed
+    const FVector Displacement = Sample.ResolvedLocation - Sample.Origin;
+    const FVector Right = FVector::CrossProduct(FVector::UpVector, Sample.Forward);
+    const FVector2D Offset(FVector::DotProduct(Displacement, Sample.Forward), FVector::DotProduct(Displacement, Right));
+
+    const int32 Bucket = Patterns[Sample.PatternIdx].Attacks[Sample.AttackIdx].DodgeStats.Record(Offset, Sample.PrevBucket);
+    PlayerActionRecord.DodgeFallback.Record(Offset, Sample.PrevBucket);
+
+    // Debug: remove after tuning (bucket: 0 Stay, 1 Left, 2 Right, 3 Away, 4 Toward)
+    UE_LOG(LogTemp, Warning, TEXT("DodgeSample F=%.0f R=%.0f Prev=%d Bucket=%d"), Offset.X, Offset.Y, Sample.PrevBucket, Bucket);
+
+    return Bucket;
 }
 
 // Handle entering patrol state, called by EnemyAIController when player is lost
@@ -469,6 +543,7 @@ void AEnemy::ExitGroggy()
 
     FTimerHandle InvincibleTimerHandle;
     GetWorldTimerManager().SetTimer(InvincibleTimerHandle, this, &AEnemy::DisableInvincible, 0.3f, false);
+   
     LimitPoise = MaxPoise;
     CurrentPoise = LimitPoise;
     ResumeCombat();
