@@ -170,27 +170,27 @@ public:
 
 	// ---- Noise tuning (designer values, tweak freely) ----
 	UPROPERTY(EditAnywhere, Category = "Noise")
-	float FootstepLoudness = 0.5f;
+	float FootstepLoudness = 1.f;
 
 	// Seconds between footsteps while moving at full walk speed
 	UPROPERTY(EditAnywhere, Category = "Noise")
-	float FootstepInterval = 0.45f;
+	float FootstepInterval = 0.2f;
 
 	// No footstep noise below this speed (cm/s)
 	UPROPERTY(EditAnywhere, Category = "Noise")
 	float MinFootstepSpeed = 50.f;
 
 	UPROPERTY(EditAnywhere, Category = "Noise")
-	float LandingLoudness = 0.8f;
+	float LandingLoudness = 2.f;
 
 	UPROPERTY(EditAnywhere, Category = "Noise")
-	float AttackLoudness = 1.0f;
+	float AttackLoudness = 4.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Noise")
-	float RollLoudness = 0.7f;
+	float RollLoudness = 0.5f;
 
 	UPROPERTY(EditAnywhere, Category = "Noise")
-	float SkillLoudness = 1.2f;
+	float SkillLoudness = 5.f;
 
 	// 0 = unlimited (the enemy's own HearingRange still applies)
 	UPROPERTY(EditAnywhere, Category = "Noise")

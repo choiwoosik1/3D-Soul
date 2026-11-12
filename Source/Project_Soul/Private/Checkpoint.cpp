@@ -72,7 +72,7 @@ void ACheckpoint::Interact()
 {
 	bActivated = true;
 
-	// 플레이어 회복
+	// Rest the player at the checkpoint, adjusting for collision height and rotation
 	if (AKwangHeroCharacters* Player = Cast<AKwangHeroCharacters>(UGameplayStatics::GetPlayerCharacter(this, 0)))
 	{
 		Player->RestAtCheckpoint(this);

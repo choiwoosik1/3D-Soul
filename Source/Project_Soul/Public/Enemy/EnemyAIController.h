@@ -39,7 +39,7 @@ protected:
     float HearingIncreaseRate = 2.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Perception")
-    float DetectionDecreaseRate = 2.f;
+    float DetectionDecreaseRate = 3.f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Perception")
 	bool bSightDetected = false;
@@ -52,6 +52,8 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Perception")
 	AActor* DetectedTarget = nullptr;
 
+    FTimerHandle AlertFocusTimerHandle;
+
 	FTimerHandle DetectionTimerHandle;
 
     virtual void OnPossess(APawn* InPawn) override;
@@ -60,6 +62,8 @@ protected:
     void OnTargetDetected(AActor* Actor, FAIStimulus Stimulus);
 
 	void UpdateDetectionLevel();
+
+    void ReleaseAlertFocus();
 
 public:
 	void TargetDetected(AActor* Actor);
