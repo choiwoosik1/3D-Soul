@@ -183,18 +183,22 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Noise")
 	float LandingLoudness = 0.8f;
 
-	UPROPERTY(EditAnywhere, Category = "Noise")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Noise")
 	float AttackLoudness = 1.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Noise")
 	float RollLoudness = 0.7f;
 
-	UPROPERTY(EditAnywhere, Category = "Noise")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Noise")
 	float SkillLoudness = 1.2f;
 
 	// 0 = unlimited (the enemy's own HearingRange still applies)
 	UPROPERTY(EditAnywhere, Category = "Noise")
 	float NoiseMaxRange = 0.f;
+
+	// Remaining time / total duration of a skill cooldown (for the HUD). Returns true while on cooldown.
+	UFUNCTION(BlueprintCallable, Category = "Skill")
+	bool GetSkillCoolDown(FGameplayTag CooldownTag, float& RemainingTime, float& TotalDuration) const;
 #pragma endregion
 
 private:
