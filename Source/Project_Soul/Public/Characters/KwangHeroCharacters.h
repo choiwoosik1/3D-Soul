@@ -100,6 +100,19 @@ private:
 public:
 	bool IsBlocking() const;
 
+	// 적 AI가 플레이어 상태를 읽는 용도
+	UFUNCTION(BlueprintPure, Category = "Combat|State")
+	bool IsGuarding() const;     // 가드 시작 ~ 가드 브레이크 피해 적용 전
+
+	UFUNCTION(BlueprintPure, Category = "Combat|State")
+	bool IsAttacking() const;    // 공격 시작 ~ 후딜 끝
+
+	UFUNCTION(BlueprintPure, Category = "Combat|State")
+	bool IsRolling() const;      // 구르기 전체
+
+	UFUNCTION(BlueprintPure, Category = "Combat|State")
+	bool IsInvincible() const { return bIsInvincible; } // 구르기 무적 프레임
+
 public:
 	FORCEINLINE UHeroCombatComponent* GetHeroCombatComponent() const { return HeroCombatComponent; }
 
@@ -170,31 +183,35 @@ public:
 
 	// ---- Noise tuning (designer values, tweak freely) ----
 	UPROPERTY(EditAnywhere, Category = "Noise")
-	float FootstepLoudness = 1.f;
+	float FootstepLoudness = 0.5f;
 
 	// Seconds between footsteps while moving at full walk speed
 	UPROPERTY(EditAnywhere, Category = "Noise")
-	float FootstepInterval = 0.2f;
+	float FootstepInterval = 0.45f;
 
 	// No footstep noise below this speed (cm/s)
 	UPROPERTY(EditAnywhere, Category = "Noise")
 	float MinFootstepSpeed = 50.f;
 
 	UPROPERTY(EditAnywhere, Category = "Noise")
-	float LandingLoudness = 2.f;
+	float LandingLoudness = 0.8f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Noise")
+	float AttackLoudness = 1.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Noise")
-	float AttackLoudness = 4.0f;
+	float RollLoudness = 0.7f;
 
-	UPROPERTY(EditAnywhere, Category = "Noise")
-	float RollLoudness = 0.5f;
-
-	UPROPERTY(EditAnywhere, Category = "Noise")
-	float SkillLoudness = 5.f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Noise")
+	float SkillLoudness = 1.2f;
 
 	// 0 = unlimited (the enemy's own HearingRange still applies)
 	UPROPERTY(EditAnywhere, Category = "Noise")
 	float NoiseMaxRange = 0.f;
+
+	// Remaining time / total duration of a skill cooldown (for the HUD). Returns true while on cooldown.
+	UFUNCTION(BlueprintCallable, Category = "Skill")
+	bool GetSkillCoolDown(FGameplayTag CooldownTag, float& RemainingTime, float& TotalDuration) const;
 #pragma endregion
 
 private:

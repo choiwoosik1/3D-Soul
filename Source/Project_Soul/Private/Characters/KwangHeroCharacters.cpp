@@ -425,6 +425,29 @@ void AKwangHeroCharacters::SetInvincible(bool bInvincible)
 	bIsInvincible = bInvincible;
 }
 
+bool AKwangHeroCharacters::GetSkillCoolDown(FGameplayTag CooldownTag, float& RemainingTime, float& TotalDuration) const
+{
+	RemainingTime = 0.f;
+	TotalDuration = 0.f;
+
+	UKwangAbilitySystemComponent* ASC = UKwangFunctionLibrary::NativeGetKwangASCFromActor(const_cast<AKwangHeroCharacters*>(this));
+	if (!ASC || !CooldownTag.IsValid()) return false;
+
+	const FGameplayEffectQuery Query = FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(FGameplayTagContainer(CooldownTag));
+	const TArray<TPair<float, float>> TimesAndDurations = ASC->GetActiveEffectsTimeRemainingAndDuration(Query);
+
+	for (const TPair<float, float>& Pair : TimesAndDurations)
+	{
+		if (Pair.Key > RemainingTime)
+		{
+			RemainingTime = Pair.Key;
+			TotalDuration = Pair.Value;
+		}
+	}
+
+	return RemainingTime > 0.f;
+}
+
 void AKwangHeroCharacters::UpdateBlockRotation(float DeltaTime)
 {
 	AActor* NearestEnemy = FindNearestEnemy(BlockEnemySearchRadius);
@@ -469,6 +492,31 @@ bool AKwangHeroCharacters::IsBlocking() const
 	return UKwangFunctionLibrary::NativeDoesActorHaveTag(
 		const_cast<AKwangHeroCharacters*>(this),
 		KwangGameplayTags::Player_Status_Blocking);
+}
+
+bool AKwangHeroCharacters::IsGuarding() const
+{
+	AActor* Self = const_cast<AKwangHeroCharacters*>(this);
+	return IsBlocking()
+		&& !UKwangFunctionLibrary::NativeDoesActorHaveTag(Self, KwangGameplayTags::Player_Status_GuardBroken);
+}
+
+bool AKwangHeroCharacters::IsAttacking() const
+{
+	static const FGameplayTag AttackingTag =
+		FGameplayTag::RequestGameplayTag(FName("Player.Status.Attacking"), false);
+
+	AActor* Self = const_cast<AKwangHeroCharacters*>(this);
+	return (AttackingTag.IsValid() && UKwangFunctionLibrary::NativeDoesActorHaveTag(Self, AttackingTag))
+		|| UKwangFunctionLibrary::NativeDoesActorHaveTag(Self, KwangGameplayTags::Player_Ability_Attack_Light_Sword)
+		|| UKwangFunctionLibrary::NativeDoesActorHaveTag(Self, KwangGameplayTags::Player_Ability_Attack_Heavy_Sword);
+
+}
+
+bool AKwangHeroCharacters::IsRolling() const
+{
+	return UKwangFunctionLibrary::NativeDoesActorHaveTag(
+		const_cast<AKwangHeroCharacters*>(this), KwangGameplayTags::	Player_Status_Rolling);
 }
 
 // Called when the game starts or when spawned
@@ -612,25 +660,14 @@ void AKwangHeroCharacters::UpdateFootstepNoise(float DeltaTime)
 	}
 }
 
-// Noise for attack / roll / skill inputs (parent input tags also match their children, e.g. InputTag.LightAttack.Sword)
+// Noise for roll inputs only. Attack / skill noise comes from AN_PlayerNoise
 void AKwangHeroCharacters::NotifyAbilityNoise(const FGameplayTag& InInputTag)
 {
-	static const FGameplayTag LightAttackTag = FGameplayTag::RequestGameplayTag(FName("InputTag.LightAttack"), false);
-	static const FGameplayTag HeavyAttackTag = FGameplayTag::RequestGameplayTag(FName("InputTag.HeavyAttack"), false);
 	static const FGameplayTag RollTag = FGameplayTag::RequestGameplayTag(FName("InputTag.Roll"), false);
-	static const FGameplayTag SkillTag = FGameplayTag::RequestGameplayTag(FName("InputTag.Skill"), false);
 
-	if (InInputTag.MatchesTag(LightAttackTag) || InInputTag.MatchesTag(HeavyAttackTag))
-	{
-		MakePlayerNoise(AttackLoudness, TEXT("Attack"), NoiseMaxRange);
-	}
-	else if (InInputTag.MatchesTag(RollTag))
+	if (InInputTag.MatchesTag(RollTag))
 	{
 		MakePlayerNoise(RollLoudness, TEXT("Roll"), NoiseMaxRange);
-	}
-	else if (InInputTag.MatchesTag(SkillTag))
-	{
-		MakePlayerNoise(SkillLoudness, TEXT("Skill"), NoiseMaxRange);
 	}
 }
 #pragma endregion
