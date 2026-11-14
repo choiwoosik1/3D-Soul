@@ -100,6 +100,19 @@ private:
 public:
 	bool IsBlocking() const;
 
+	// 적 AI가 플레이어 상태를 읽는 용도
+	UFUNCTION(BlueprintPure, Category = "Combat|State")
+	bool IsGuarding() const;     // 가드 시작 ~ 가드 브레이크 피해 적용 전
+
+	UFUNCTION(BlueprintPure, Category = "Combat|State")
+	bool IsAttacking() const;    // 공격 시작 ~ 후딜 끝
+
+	UFUNCTION(BlueprintPure, Category = "Combat|State")
+	bool IsRolling() const;      // 구르기 전체
+
+	UFUNCTION(BlueprintPure, Category = "Combat|State")
+	bool IsInvincible() const { return bIsInvincible; } // 구르기 무적 프레임
+
 public:
 	FORCEINLINE UHeroCombatComponent* GetHeroCombatComponent() const { return HeroCombatComponent; }
 
