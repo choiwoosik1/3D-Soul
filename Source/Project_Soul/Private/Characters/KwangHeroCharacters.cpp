@@ -494,6 +494,31 @@ bool AKwangHeroCharacters::IsBlocking() const
 		KwangGameplayTags::Player_Status_Blocking);
 }
 
+bool AKwangHeroCharacters::IsGuarding() const
+{
+	AActor* Self = const_cast<AKwangHeroCharacters*>(this);
+	return IsBlocking()
+		&& !UKwangFunctionLibrary::NativeDoesActorHaveTag(Self, KwangGameplayTags::Player_Status_GuardBroken);
+}
+
+bool AKwangHeroCharacters::IsAttacking() const
+{
+	static const FGameplayTag AttackingTag =
+		FGameplayTag::RequestGameplayTag(FName("Player.Status.Attacking"), false);
+
+	AActor* Self = const_cast<AKwangHeroCharacters*>(this);
+	return (AttackingTag.IsValid() && UKwangFunctionLibrary::NativeDoesActorHaveTag(Self, AttackingTag))
+		|| UKwangFunctionLibrary::NativeDoesActorHaveTag(Self, KwangGameplayTags::Player_Ability_Attack_Light_Sword)
+		|| UKwangFunctionLibrary::NativeDoesActorHaveTag(Self, KwangGameplayTags::Player_Ability_Attack_Heavy_Sword);
+
+}
+
+bool AKwangHeroCharacters::IsRolling() const
+{
+	return UKwangFunctionLibrary::NativeDoesActorHaveTag(
+		const_cast<AKwangHeroCharacters*>(this), KwangGameplayTags::	Player_Status_Rolling);
+}
+
 // Called when the game starts or when spawned
 void AKwangHeroCharacters::BeginPlay()
 {
