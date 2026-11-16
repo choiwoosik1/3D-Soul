@@ -21,45 +21,30 @@ void ANormalEnemy_Stage3_Musketeer::PostInitializeComponents()
 	LeftWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage3_Musketeer::OnWeaponHitboxOverlap);
 }
 
-// Base decision logic for enemy's next action
-void ANormalEnemy_Stage3_Musketeer::DecideNextAction()
-{
-	if (CharacterState != EEnemyState::InCombat) return;
-
-	AAIController* AIC = Cast<AAIController>(GetController());
-	if (!AIC) return;
-
-	AActor* Target = Cast<AActor>(AIC->GetFocusActor());
-	if (!Target) return;
-
-	float Distance = FVector::Dist(GetActorLocation(), Target->GetActorLocation());
-
-	/* If the target is within the melee attack pattern's range, perform that attack immediately
-	if (Distance <= Patterns[1].AttackRange)
-	{
-		PerformAttackPattern(1);
-		return;
-	}*/
-
-	// Find valid attack patterns based on distance to the target
-	TArray<int32> ValidAttackPatterns;
-	for (int32 i = 0; i < Patterns.Num(); i++)
-	{
-		if (Distance <= Patterns[i].AttackRange)
-			ValidAttackPatterns.Add(i);
-	}
-
-	// If there are valid attack patterns, randomly select one and perform the attack
-	if (ValidAttackPatterns.Num() > 0)
-	{
-		int32 SelectedIdx = ValidAttackPatterns[FMath::RandRange(0, ValidAttackPatterns.Num() - 1)];
-		PerformAttackPattern(SelectedIdx);
-		return;
-	}
-}
-
 // Fire a projectile towards the target, calculating the lead based on the target's velocity to increase hit accuracy
 void ANormalEnemy_Stage3_Musketeer::FireProjectile_Implementation()
 {
-	
+	if (!ProjectileClass) return;
+	if (!Patterns.IsValidIndex(PatternIdx) || !Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
+
+	const FAttackProperties& Attack = Patterns[PatternIdx].Attacks[AttackIdx++];
+
+	const FVector MuzzleLocation = LeftWeaponMesh->GetSocketLocation(MuzzleSocketName);
+	FRotator FireRotation = LeftWeaponMesh->GetSocketRotation(MuzzleSocketName);
+
+	AAIController* AIC = Cast<AAIController>(GetController());
+	if (AIC && AIC->GetFocusActor())
+	{
+		FireRotation = (AIC->GetFocusActor()->GetActorLocation() - MuzzleLocation).Rotation();
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.Instigator = this;
+
+	AProjectile* Projectile = GetWorld()->SpawnActor<AProjectile>(ProjectileClass, MuzzleLocation, FireRotation, SpawnParams);
+	if (!Projectile) return;
+
+	Projectile->SetDamage(BaseDamage * Attack.DamageMultiplier);
+	Projectile->Launch(FireRotation.Vector(), ProjectileSpeed);
 }
