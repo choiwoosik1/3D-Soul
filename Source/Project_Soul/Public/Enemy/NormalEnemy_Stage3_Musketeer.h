@@ -14,11 +14,9 @@ public:
 
 protected:
 	UPROPERTY(EditAnywhere, Category = "Combat")
-	float ProjectileSpeed = 800.f;
+	float ProjectileSpeed = 10000.f;
 
 	virtual void PostInitializeComponents() override;
-
-	virtual void DecideNextAction() override;
 
 	virtual void FireProjectile_Implementation() override;
 };

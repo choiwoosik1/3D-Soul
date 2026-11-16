@@ -1,7 +1,7 @@
 #include "Enemy/NormalEnemy_Stage2_Korea.h"
+#include "AIController.h"
 #include "Components/BoxComponent.h"
 #include "Delegates/Delegate.h"
-#include "AIController.h"
 
 // Sets default values
 ANormalEnemy_Stage2_Korea::ANormalEnemy_Stage2_Korea()

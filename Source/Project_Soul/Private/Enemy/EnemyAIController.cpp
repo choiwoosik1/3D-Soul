@@ -142,8 +142,13 @@ void AEnemyAIController::UpdateDetectionLevel()
 		// Increase detection level based on hearing, with faster increase when target is closer and stronger stimulus
         if (bHearingDetected)
         {
-            float DistanceRatio = FMath::Clamp(Distance / Enemy->GetHearingRange(), 0.f, 1.f);
-            float SpeedMultiplier = FMath::Lerp(10.f, 1.f, DistanceRatio);
+            float DistanceRatio = FMath::Max(Distance / Enemy->GetHearingRange(), 0.f);
+            float SpeedMultiplier = FMath::Lerp(8.f, 1.f, DistanceRatio);
+            if (DistanceRatio > 1.f)
+            {
+                SpeedMultiplier = 0;
+            }
+
             HearingIncrease = HearingIncreaseRate * SpeedMultiplier * LastHearingStimulus.Strength;
             bHearingDetected = false;
         }
@@ -165,12 +170,13 @@ void AEnemyAIController::UpdateDetectionLevel()
         if ((bCrossed30 || bCrossed40) && DetectedTarget)
         {
             SetFocus(DetectedTarget);
-            ClearFocus(EAIFocusPriority::Gameplay);
+            GetWorldTimerManager().SetTimer(AlertFocusTimerHandle, this, &AEnemyAIController::ReleaseAlertFocus, 0.6f, false);
         }
 
 		// Transition to combat state when detection level reaches max and enemy is alert
         if (DetectionLevel >= MaxDetectionLevel && Enemy->GetCharacterState() == EEnemyState::Alert)
         {
+            GetWorldTimerManager().ClearTimer(AlertFocusTimerHandle);
             Enemy->EnterCombat();
         }
 
@@ -233,5 +239,15 @@ void AEnemyAIController::TargetDetected(AActor* Actor)
 		FVector Destination = Actor->GetActorLocation() - Actor->GetActorForwardVector() * 5.f;
         BBComp->SetValueAsVector("Destination", Destination);
         BBComp->SetValueAsFloat("DetectionLevel", DetectionLevel);
+    }
+}
+
+void AEnemyAIController::ReleaseAlertFocus()
+{
+    // Only release focus if the enemy is still just alerted; never during combat or attack
+    ANormalEnemy* Enemy = Cast<ANormalEnemy>(GetPawn());
+    if (Enemy && Enemy->GetCharacterState() == EEnemyState::Alert)
+    {
+        ClearFocus(EAIFocusPriority::Gameplay);
     }
 }

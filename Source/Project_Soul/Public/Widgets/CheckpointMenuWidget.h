@@ -42,6 +42,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UCheckpointEntryWidget> EntryClass;
 
+	UPROPERTY(EditDefaultsOnly)
+	float EntrySpacing = 20.f;
+
 	TWeakObjectPtr<ACheckpoint> Current;
 
 	virtual void NativeOnInitialized() override;
