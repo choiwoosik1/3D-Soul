@@ -1,4 +1,5 @@
 #include "Enemy/NormalEnemy_Stage1_Goguryeo.h"
+#include "Enemy/PlayerSnapshot.h"
 #include "Enemy/Projectile.h"
 #include "AIController.h"
 #include "Components/BoxComponent.h"
@@ -53,41 +54,21 @@ void ANormalEnemy_Stage1_Goguryeo::PostInitializeComponents()
 	LeftWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Goguryeo::OnWeaponHitboxOverlap);
 }
 
-// Base decision logic for enemy's next action
+// Use the melee poke whenever the target is close; otherwise decide like any other enemy
 void ANormalEnemy_Stage1_Goguryeo::DecideNextAction()
-{ 
+{
 	if (CharacterState != EEnemyState::InCombat) return;
 
-	AAIController* AIC = Cast<AAIController>(GetController());
-	if (!AIC) return;
+	const AActor* Target = GetCombatTarget();
+	if (!Target || !Patterns.IsValidIndex(1)) return;
 
-	AActor* Target = Cast<AActor>(AIC->GetFocusActor());
-	if (!Target) return;
-
-	float Distance = FVector::Dist(GetActorLocation(), Target->GetActorLocation());
-
-	// If the target is within the melee attack pattern's range, perform that attack immediately
-	if (Distance <= Patterns[1].AttackRange)
+	if (FVector::Dist(GetActorLocation(), Target->GetActorLocation()) <= Patterns[1].AttackRange)
 	{
 		PerformAttackPattern(1);
 		return;
 	}
 
-	// Find valid attack patterns based on distance to the target
-	TArray<int32> ValidAttackPatterns;
-	for (int32 i = 0; i < Patterns.Num(); i++)
-	{
-		if (Distance <= Patterns[i].AttackRange)
-			ValidAttackPatterns.Add(i);
-	}
-
-	// If there are valid attack patterns, randomly select one and perform the attack
-	if (ValidAttackPatterns.Num() > 0)
-	{
-		int32 SelectedIdx = ValidAttackPatterns[FMath::RandRange(0, ValidAttackPatterns.Num() - 1)];
-		PerformAttackPattern(SelectedIdx);
-		return;
-	}
+	Super::DecideNextAction();
 }
 
 // Fire a projectile at the predicted intercept point, shifted sideways by the learned dodge habit,
@@ -111,12 +92,14 @@ void ANormalEnemy_Stage1_Goguryeo::FireProjectile_Implementation()
 	AActor* Target = AIC ? AIC->GetFocusActor() : nullptr;
 	if (Target)
 	{
+		const FPlayerSnapshot Snapshot = FPlayerSnapshot::Capture(Target);
 		const FVector TargetLocation = Target->GetActorLocation();
 		const FVector RawVelocity = Target->GetVelocity();
 
 		// Roll speed lasts only for the roll, so extrapolating it over the flight overshoots;
-		// a target rolling at fire time is aimed a fixed distance along the roll direction instead
-		const bool bTargetRolling = RawVelocity.Size2D() > DodgeSpeedThreshold;
+		// a target rolling at fire time is aimed a fixed distance along the roll direction instead.
+		// The speed check keeps roll recovery (nearly still) on normal lead; the state check keeps fast non-roll movement out.
+		const bool bTargetRolling = Snapshot.Action == EPlayerAction::Rolling && RawVelocity.Size2D() > DodgeSpeedThreshold;
 		float LeadTime = 0.f;
 		FVector Intercept;
 
@@ -146,9 +129,9 @@ void ANormalEnemy_Stage1_Goguryeo::FireProjectile_Implementation()
 		FireRotation = (AimLocation - MuzzleLocation).Rotation();
 
 		// Debug: blue = target now, yellow = predicted point, green = corrected aim (remove once tuned)
-		DrawDebugSphere(GetWorld(), TargetLocation, 20.f, 12, FColor::Blue, false, 3.f);
-		DrawDebugSphere(GetWorld(), Intercept, 20.f, 12, FColor::Yellow, false, 3.f);
-		DrawDebugSphere(GetWorld(), AimLocation, 20.f, 12, FColor::Green, false, 3.f);
+		// DrawDebugSphere(GetWorld(), TargetLocation, 20.f, 12, FColor::Blue, false, 3.f);
+		// DrawDebugSphere(GetWorld(), Intercept, 20.f, 12, FColor::Yellow, false, 3.f);
+		// DrawDebugSphere(GetWorld(), AimLocation, 20.f, 12, FColor::Green, false, 3.f);
 
 		// Sample where the target actually is when the projectile is expected to arrive,
 		// measured from the uncorrected predicted point so the correction never feeds back into the data
@@ -173,7 +156,7 @@ void ANormalEnemy_Stage1_Goguryeo::FireProjectile_Implementation()
 				const float ErrorRight = FVector::DotProduct(Error, Right);
 
 				// Debug: red = target when the projectile should arrive; red vs yellow is the prediction error
-				DrawDebugSphere(GetWorld(), Actual, 20.f, 12, FColor::Red, false, 3.f);
+				// DrawDebugSphere(GetWorld(), Actual, 20.f, 12, FColor::Red, false, 3.f);
 
 				// MissR = lateral miss of the aim point (with homing on, not the actual miss)
 				UE_LOG(LogTemp, Warning, TEXT("ShotSample\tRoll=%d\tDist=%.0f\tSpeed=%.0f\tLeadT=%.2f\tShiftR=%.0f\tErrF=%.0f\tErrR=%.0f\tMissR=%.0f"),

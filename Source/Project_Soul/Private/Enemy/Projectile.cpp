@@ -1,5 +1,6 @@
 #include "Enemy/Projectile.h"
 #include "Enemy/Enemy.h"
+#include "Enemy/PlayerSnapshot.h"
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
@@ -132,6 +133,9 @@ void AProjectile::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* Ot
 {
 	// Ignore other enemies
 	if (Cast<AEnemy>(OtherActor)) return;
+
+	// Roll invincibility: the arrow passes through instead of being spent on a hit the player ignores
+	if (FPlayerSnapshot::Capture(OtherActor).bInvincible) return;
 
 	// The shooter may already be gone when the projectile lands
 	AController* InstigatorController = GetInstigator() ? GetInstigator()->GetController() : nullptr;
