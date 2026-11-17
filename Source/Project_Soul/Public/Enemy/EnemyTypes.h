@@ -1,6 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Enemy/DodgeStats.h"
+#include "Enemy/PlayerBehaviorStats.h"
 #include "EnemyTypes.generated.h"
 
 // Enumeration for enemy states, used for AI behavior and animation control
@@ -30,107 +32,80 @@ enum class EGuardResponse : uint8
 USTRUCT(BlueprintType)
 struct FAttackProperties
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float DamageMultiplier;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float DamageMultiplier;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float RotationSpeedR = 180.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float RotationSpeedR = 180.f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float RotationSpeedL = 180.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float MovementSpeed = 0.f;
+	float MovementSpeed = 0.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EGuardResponse GuardResponse = EGuardResponse::Block;
+
+	UPROPERTY(VisibleAnywhere)
+	FDodgeStats DodgeStats;
 };
 
 // Structure to define an attack pattern, including animation montage and attack properties
 USTRUCT(BlueprintType)
 struct FAttackPattern
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    UAnimMontage* Montage = nullptr;
-    
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UAnimMontage* Montage = nullptr;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FAttackProperties> Attacks;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float AttackRange = 200.f;
-};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float AttackRange = 200.f;
 
-// Structure to record player's dodge information for AI decision making
-USTRUCT(BlueprintType)
-struct FDodgeRecord
-{
-    GENERATED_BODY();
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-    FVector AttackDir = FVector::ZeroVector;
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-    FVector LastDodgeDirection = FVector::ZeroVector;
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-    FVector AccumulatedOffset = FVector::ZeroVector;
+	// How the player has dealt with this pattern (runtime only)
+	UPROPERTY(VisibleAnywhere)
+	FPatternOutcomeStats OutcomeStats;
 };
 
 // Player action record for AI decision making
 USTRUCT(BlueprintType)
 struct FPlayerActionRecord
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-    FDodgeRecord DodgeRecord;
+	// Dodge habit learning
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-    float TimeSinceLastAttack;
+	// Dodge habit across all swings; supports swings that have few samples
+	UPROPERTY(VisibleAnywhere)
+	FDodgeStats DodgeFallback;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-    bool bIsBlocking;
+	// Dodge bucket of the previous lunge in the pattern currently being executed (INDEX_NONE at pattern start)
+	int32 PatternPrevBucket = INDEX_NONE;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-    bool bIsRolling;
+	// Lunge attack currently being tracked
+	FAttackSample PendingSample;
+	
+	// Attack response habit learning
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-    float DistanceToEnemy;
+	// Player habits that do not belong to a single pattern
+	UPROPERTY(VisibleAnywhere)
+	FPlayerBehaviorStats Behavior;
 
-	// Set the melee attack direction based on the enemy's forward vector
-	// Or set the predicted ranged attack location based on the player's movement 
-    void SetAttackDirection(FVector Dir)
-    {
-        DodgeRecord.AttackDir = Dir;
-    }
+	// Swing currently being judged
+	FSwingObservation Swing;
 
-	// Get the attack direction saved in the beginning of the attack
-    FVector GetAttackDirection()
-    {
-        return DodgeRecord.AttackDir;
-    }
+	// Wait currently in progress
+	FWaitObservation Wait;
 
-	// Get the inverse rotation matrix of the attack direction
-    // Used to transform player dodge direction into enemy's attack-relative space
-    FMatrix GetAttackTransform()
-    {
-        return FRotationMatrix(DodgeRecord.AttackDir.Rotation()).Inverse();
-    }
+	// The attack being executed was started as a punish
+	bool bPunishAttack = false;
 
-	// Record the player's dodge direction
-    void RecordDodge(FVector DodgeDir)
-    {
-        DodgeRecord.LastDodgeDirection = DodgeDir;
-        DodgeRecord.AccumulatedOffset = FMath::Lerp(DodgeRecord.AccumulatedOffset, DodgeDir, 0.5f);
-    }
-
-	// Get the accumulated dodge offset, used for adjusting enemy attack movement
-    FVector GetCorrectedOffset()
-    {
-        return DodgeRecord.AccumulatedOffset;
-    }
+	// Whether the target was attacking at the previous decision; a punish is rolled only when an attack begins
+	bool bTargetWasAttacking = false;
 };

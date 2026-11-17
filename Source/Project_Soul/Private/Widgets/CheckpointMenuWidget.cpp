@@ -3,6 +3,7 @@
 #include "Checkpoint.h"
 #include "Components/Button.h"
 #include "Components/PanelWidget.h"
+#include "Components/VerticalBoxSlot.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -79,7 +80,12 @@ void UCheckpointMenuWidget::ShowTravelList()
 		UCheckpointEntryWidget* Entry = CreateWidget<UCheckpointEntryWidget>(this, EntryClass);
 		Entry->Setup(Checkpoint);
 		Entry->OnSelected.BindUObject(this, &UCheckpointMenuWidget::OnDestinationSelected);
-		EntryContainer->AddChild(Entry);
+		
+		if (UVerticalBoxSlot* BoxSlot = Cast<UVerticalBoxSlot>(EntryContainer->AddChild(Entry)))
+		{
+			// Half of the spacing above and below, so the gap between two entries equals EntrySpacing
+			BoxSlot->SetPadding(FMargin(0.f, EntrySpacing * 0.5f));
+		}
 	}
 
 	MainPanel->SetVisibility(ESlateVisibility::Collapsed);

@@ -48,6 +48,9 @@ protected:
 	float CriticalHitMultiplier = 3.f;
 
 	UPROPERTY(VisibleAnywhere, Category = "Combat")
+	bool bIsInvincible = false;
+
+	UPROPERTY(VisibleAnywhere, Category = "Combat")
 	AActor* AttackInitiator = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
@@ -122,8 +125,61 @@ protected:
 
 	FTimerHandle DecisionTimerHandle;
 
+	// How often the enemy looks at the situation and decides what to do
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.05"))
+	float DecisionInterval = 0.2f;
+
+	// Shortest pause between the end of one pattern and the start of the next; punishes ignore it
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
+	float MinAttackGap = 0.6f;
+
+	float LastAttackEndTime = 0.f;
+
 	UPROPERTY(VisibleAnywhere, Category = "AI")
 	FPlayerActionRecord PlayerActionRecord;
+
+	// Chance to apply aim offset to attacks
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float MaxApplyChance = 1.f;
+
+	// Maximum distance the enemy can aim off-target when applying aim offset
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
+	float MaxAimShift = 600.f;
+
+	UPROPERTY(EditAnywhere, Category = "AI")
+	bool bShowBehaviorDebug = false;
+
+	// How strongly guard-beating patterns are favored against a player who guards a lot
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
+	float GuardCounterBonus = 2.f;
+
+	// Weight multiplier for the pattern that was used last
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float RepeatPenalty = 0.5f;
+
+	float AttackStartTime = 0.f;
+
+	FTimerHandle SwingObserveTimerHandle;
+
+	// Chance to hold an attack when the player shows no tendency either way (0 = never wait)
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0", ClampMax = "0.5"))
+	float BaseWaitChance = 0.5f;
+
+	// How long one wait lasts; a random length in this range is picked each time
+	UPROPERTY(EditAnywhere, Category = "AI")
+	FFloatInterval WaitDuration = FFloatInterval(0.4f, 1.8f);
+
+	// A pattern can be used as a punish if its startup is within this many seconds of the enemy's fastest pattern
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
+	float PunishStartupMargin = 0.15f;
+
+	// How strongly patterns the player hits back after are avoided
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
+	float PunishedPenalty = 1.f;
+
+	int32 PunishWatchIdx = INDEX_NONE;
+
+	FTimerHandle PunishWatchTimerHandle;
 
 	// Animation montages
 
@@ -156,7 +212,33 @@ protected:
 
 	void SetCharacterState(EEnemyState NewState);
 
+	FVector ApplyAimOffset(const FVector& BaseLocation, const FVector& Forward, const FAttackProperties& Attack, int32 PrevBucket) const;
+
+	int32 RecordSample(const FAttackSample& Sample);
+
+	AActor* GetCombatTarget() const;
+
+	void ObserveSwing();
+
+	virtual float ScorePattern(int32 Idx) const;
+
+	void DrawBehaviorDebug();
+
+	int32 PickPattern(float Distance, bool bFastOnly) const;
+
+	virtual float GetWaitChance() const;
+
+	float GetPunishChance() const;
+
+	void CloseWait();
+
+	void ClosePunishWatch(bool bPunished);
+
+	void ResetDecisionState();
+
 	void InterruptCurrentAttack();
+
+	void DisableInvincible() { bIsInvincible = false; }
 
 	virtual void NotifyHealthBarUpdate(float NewCurrentHealth, float NewMaxHealth) {}
 

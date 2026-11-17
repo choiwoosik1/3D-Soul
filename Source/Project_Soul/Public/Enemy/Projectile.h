@@ -2,7 +2,6 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Components/SceneComponent.h"
 #include "Projectile.generated.h"
 
 UCLASS()
@@ -32,13 +31,10 @@ protected:
     float Damage = 10.f;
 
     UPROPERTY(EditAnywhere, Category = "Combat")
-	float Speed = 600.f;
+    float HomingAcceleration = 1400.f;
 
     UPROPERTY(EditAnywhere, Category = "Combat")
-    float HomingAcceleration = 1000.f;
-
-    UPROPERTY(EditAnywhere, Category = "Combat")
-    float LifeSpan = 10.f;
+    float LifeSpan = 4.f;
 
 	virtual void BeginPlay() override;
 
@@ -48,9 +44,24 @@ protected:
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, 
         UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
-	void OnHit(UPrimitiveComponent* HitCombp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
-        int32 OtherBodyIndex, FVector NormalImpulse, const FHitResult& Hit);
+    UFUNCTION()
+    void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+        FVector NormalImpulse, const FHitResult& Hit);
 
 public:
 	void SetDamage(float DamageAmount) { Damage = DamageAmount; }
+
+	// Fire the projectile at a constant speed so the real flight time matches the shooter's prediction
+	void Launch(const FVector& Direction, float NewSpeed);
+
+	// Home in on the target while keeping the shooter's learned aim shift applied
+	void InitHoming(AActor* Target, const FVector& NewAimShift);
+
+private:
+	TWeakObjectPtr<AActor> HomingActor;
+
+    // Fire-time prediction, consumed as the target actually moves along it
+    FVector FireTargetLocation = FVector::ZeroVector;
+    FVector PredictedDir = FVector::ZeroVector;
+    float PredictedDistance = 0.f;
 };

@@ -1,7 +1,7 @@
 #include "Enemy/NormalEnemy_Stage1_Baekje.h"
+#include "AIController.h"
 #include "Components/BoxComponent.h"
 #include "Delegates/Delegate.h"
-#include "AIController.h"
 
 // Sets default values
 ANormalEnemy_Stage1_Baekje::ANormalEnemy_Stage1_Baekje()
