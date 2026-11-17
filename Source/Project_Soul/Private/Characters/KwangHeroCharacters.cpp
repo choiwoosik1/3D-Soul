@@ -25,6 +25,8 @@
 #include "GameplayEffect.h"
 #include "Animation/AnimMontage.h"
 #include "Perception/AISense_Hearing.h"
+#include "Enemy/Enemy.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 #include "KwangDebugHelper.h"
 
@@ -533,12 +535,14 @@ void AKwangHeroCharacters::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	const bool bIsCurrentlyBlocking = IsBlocking();
-	GetCharacterMovement()->bOrientRotationToMovement = !bIsCurrentlyBlocking;
+	GetCharacterMovement()->bOrientRotationToMovement = !bIsCurrentlyBlocking && AimAssistTimeRemaining <= 0.f;
 
 	if (bIsCurrentlyBlocking)
 	{
 		UpdateBlockRotation(DeltaTime);
 	}
+
+	UpdateAimAssist(DeltaTime);
 
 	UpdateFootstepNoise(DeltaTime);
 }
@@ -671,6 +675,165 @@ void AKwangHeroCharacters::NotifyAbilityNoise(const FGameplayTag& InInputTag)
 	}
 }
 #pragma endregion
+
+float AKwangHeroCharacters::CalculateThreatScore(const AActor* Candidate, float MaxDistance) const
+{
+	if (!Candidate || Candidate == this || MaxDistance <= 0.f)
+	{
+		return -1.f;
+	}
+
+	// Never pick dead targets
+	if (UKwangFunctionLibrary::NativeDoesActorHaveTag(const_cast<AActor*>(Candidate), KwangGameplayTags::Shared_Status_Dead))
+	{
+		return -1.f;
+	}
+
+	const AEnemy* Enemy = Cast<AEnemy>(Candidate);
+	if (Enemy && Enemy->GetCharacterState() == EEnemyState::Dead)
+	{
+		return -1.f;
+	}
+
+	const FVector HeroLocation = GetActorLocation();
+	const float Distance = FVector::Dist(HeroLocation, Candidate->GetActorLocation());
+	if (Distance > MaxDistance)
+	{
+		return -1.f;
+	}
+
+	// 1) Distance: closer = higher (0..1)
+	const float DistanceScore = FMath::Clamp(1.f - Distance / MaxDistance, 0.f, 1.f);
+
+	// 2) Angle: closer to the camera forward direction = higher (0..1, behind = 0)
+	const FVector CameraForward = GetControlRotation().Vector().GetSafeNormal2D();
+	const FVector ToCandidate = (Candidate->GetActorLocation() - HeroLocation).GetSafeNormal2D();
+	const float AngleScore = FMath::Clamp(FVector::DotProduct(CameraForward, ToCandidate), 0.f, 1.f);
+
+	float Score = DistanceScore * DistanceWeight + AngleScore * AngleWeight;
+
+	// 3) Threat: the enemy is attacking right now
+	if (Enemy && Enemy->GetCharacterState() == EEnemyState::Attack)
+	{
+		Score += AttackingWeight * (IsBlocking() ? BlockingAttackMultiplier : 1.f);
+
+		if (Enemy->CanBeParried())
+		{
+			Score += ParryableBonus;
+		}
+	}
+
+	return Score;
+}
+
+AActor* AKwangHeroCharacters::FindThreatTarget(float SearchRadius, float MaxAngle) const
+{
+	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
+
+	TArray<AActor*> ActorsToIgnore;
+	ActorsToIgnore.Add(const_cast<AKwangHeroCharacters*>(this));
+
+	TArray<AActor*> Overlapped;
+	UKismetSystemLibrary::SphereOverlapActors(
+		this,
+		GetActorLocation(),
+		SearchRadius,
+		ObjectTypes,
+		AEnemy::StaticClass(),
+		ActorsToIgnore,
+		Overlapped
+	);
+
+	const FVector CameraForward = GetControlRotation().Vector().GetSafeNormal2D();
+
+	AActor* BestTarget = nullptr;
+	float BestScore = -1.f;
+
+	for (AActor* Found : Overlapped)
+	{
+		// Only enemies inside the camera cone are candidates
+		const FVector ToFound = (Found->GetActorLocation() - GetActorLocation()).GetSafeNormal2D();
+		const float AngleDeg = FMath::RadiansToDegrees(
+			FMath::Acos(FMath::Clamp(FVector::DotProduct(CameraForward, ToFound), -1.f, 1.f)));
+		if (AngleDeg > MaxAngle)
+		{
+			continue;
+		}
+
+		const float Score = CalculateThreatScore(Found, SearchRadius);
+		if (Score > BestScore)
+		{
+			BestScore = Score;
+			BestTarget = Found;
+		}
+	}
+
+	return BestTarget;
+}
+
+AActor* AKwangHeroCharacters::AimAssistToThreatTarget(float SearchRadius, float MaxAngle)
+{
+	// While locked on, the lock-on tick already keeps the character facing the locked target.
+	// Just report which target the attack should use.
+	if (UKwangFunctionLibrary::NativeDoesActorHaveTag(this, KwangGameplayTags::Player_Status_TargetLock))
+	{
+		return GetPriorityAttackTarget(SearchRadius, MaxAngle);
+	}
+
+	if (IsBlocking() || IsRolling())
+	{
+		return nullptr;
+	}
+
+	AActor* Target = GetPriorityAttackTarget(SearchRadius, MaxAngle);
+	if (!Target)
+	{
+		return nullptr;
+	}
+
+	AimAssistTarget = Target;
+	AimAssistTimeRemaining = AimAssistDuration;
+	return Target;
+}
+
+void AKwangHeroCharacters::UpdateAimAssist(float DeltaTime)
+{
+	if (AimAssistTimeRemaining <= 0.f)
+	{
+		return;
+	}
+
+	AimAssistTimeRemaining -= DeltaTime;
+
+	AActor* Target = AimAssistTarget.Get();
+	if (!Target || IsBlocking() || IsRolling() ||
+		UKwangFunctionLibrary::NativeDoesActorHaveTag(this, KwangGameplayTags::Player_Status_TargetLock))
+	{
+		AimAssistTimeRemaining = 0.f;
+		return;
+	}
+
+	// Turn toward the target at a limited speed (not a snap)
+	const FVector ToTarget = Target->GetActorLocation() - GetActorLocation();
+	const float TargetYaw = ToTarget.Rotation().Yaw;
+	const float NewYaw = FMath::FixedTurn(GetActorRotation().Yaw, TargetYaw, AimAssistTurnSpeed * DeltaTime);
+
+	SetActorRotation(FRotator(0.f, NewYaw, 0.f));
+}
+
+AActor* AKwangHeroCharacters::GetPriorityAttackTarget(float SearchRadius, float MaxAngle) const
+{
+	// 1) The enemy the player locked on to, at any distance, as long as it is alive
+	AActor* Locked = LockedTarget.Get();
+	if (Locked && CalculateThreatScore(Locked, 100000.f) >= 0.f)
+	{
+		return Locked;
+	}
+
+	// 2) Otherwise the highest threat target around the player
+	return FindThreatTarget(SearchRadius, MaxAngle);
+}
 
 //void AKwangHeroCharacters::PossessedBy(AController* NewController)
 //{

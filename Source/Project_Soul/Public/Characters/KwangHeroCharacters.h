@@ -113,6 +113,61 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Combat|State")
 	bool IsInvincible() const { return bIsInvincible; } // 구르기 무적 프레임
 
+	// ---- Threat targeting (shared by target lock and attack aim assist) ----
+public:
+	// Returns -1 when the candidate cannot be targeted (null, dead, farther than MaxDistance)
+	float CalculateThreatScore(const AActor* Candidate, float MaxDistance) const;
+
+	// Best threat target around the player inside the camera cone. nullptr if none.
+	UFUNCTION(BlueprintCallable, Category = "Combat|Threat")
+	AActor* FindThreatTarget(float SearchRadius, float MaxAngle) const;
+
+	// Finds the best threat target and turns the character toward it for a short time.
+	// Does nothing while target lock is active, blocking or rolling. Returns the chosen target.
+	UFUNCTION(BlueprintCallable, Category = "Combat|Threat")
+	AActor* AimAssistToThreatTarget(float SearchRadius, float MaxAngle);
+
+	// Called by the target lock ability (nullptr when the lock ends)
+	void SetLockedTarget(AActor* NewTarget) { LockedTarget = NewTarget; }
+
+	UFUNCTION(BlueprintPure, Category = "Combat|Threat")
+	AActor* GetLockedTarget() const { return LockedTarget.Get(); }
+
+	// Locked target first (any distance), otherwise the best threat target in the camera cone
+	UFUNCTION(BlueprintCallable, Category = "Combat|Threat")
+	AActor* GetPriorityAttackTarget(float SearchRadius, float MaxAngle) const;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Threat")
+	float DistanceWeight = 1.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Threat")
+	float AngleWeight = 1.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Threat")
+	float AttackingWeight = 1.5f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Threat")
+	float ParryableBonus = 0.5f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Threat")
+	float BlockingAttackMultiplier = 2.0f;
+
+	// Turn speed of the aim assist in degrees per second
+	UPROPERTY(EditDefaultsOnly, Category = "Threat|AimAssist")
+	float AimAssistTurnSpeed = 720.f;
+
+	// How long the aim assist keeps turning after it was triggered (seconds)
+	UPROPERTY(EditDefaultsOnly, Category = "Threat|AimAssist")
+	float AimAssistDuration = 0.25f;
+
+private:
+	void UpdateAimAssist(float DeltaTime);
+
+	TWeakObjectPtr<AActor> AimAssistTarget;
+	float AimAssistTimeRemaining = 0.f;
+
+	TWeakObjectPtr<AActor> LockedTarget;
+
 public:
 	FORCEINLINE UHeroCombatComponent* GetHeroCombatComponent() const { return HeroCombatComponent; }
 
