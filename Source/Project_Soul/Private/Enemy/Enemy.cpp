@@ -860,6 +860,7 @@ void AEnemy::EnterCombat()
 void AEnemy::ResumeCombat()
 {
     SetCharacterState(EEnemyState::InCombat);
+    bCriticalHit = false;
 }
 
 // Handle entering stagger state
