@@ -28,7 +28,11 @@ protected:
 private:
 	void TryLockOnTarget();
 	void GetAvaillableActorsToLock();
-	AActor* GetNearestTargetFromAvailableActors(const TArray<AActor*>& InAvailableActors);
+	AActor* GetBestTargetFromAvailableActors(const TArray<AActor*>& InAvailableActors);
+	float CalculateThreatScore(const AActor* Candidate);
+	void TryRetargetByThreat(float DeltaTime);
+	bool TrySwitchToNextTarget();
+	void GetNearbyActorsToLock();
 	void DrawTargetLockAbility();
 	void SetTargetLockWidgetPosition();
 
@@ -56,6 +60,49 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "TargetLock")
 	float MaxTargetLockDistance = 2500.f;
 
+	// ---- Threat scoring weights (tunable in the GA Blueprint) ----
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Threat")
+	float DistanceWeight = 1.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Threat")
+	float AngleWeight = 1.0f;
+
+	// Bonus when the enemy is currently attacking
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Threat")
+	float AttackingWeight = 1.5f;
+
+	// Extra bonus when the current attack can be parried
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Threat")
+	float ParryableBonus = 0.5f;
+
+	// While blocking, the attacking bonus is multiplied by this value
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Threat")
+	float BlockingAttackMultiplier = 2.0f;
+
+	// ---- Auto retarget while locked on ----
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Threat")
+	bool bAutoRetarget = true;
+
+	// If true, the lock only switches while the player is blocking
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Threat")
+	bool bRetargetOnlyWhileBlocking = false;
+
+	// How often the threat scores are re-evaluated (seconds)
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Threat")
+	float RetargetInterval = 0.25f;
+
+	// A new target must beat the current one by this score to take over
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Threat")
+	float RetargetMargin = 1.0f;
+
+	// Minimum time between two switches (seconds)
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Threat")
+	float RetargetCooldown = 1.0f;
+
+	// Search radius (all directions) for the next target when the locked one is lost
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Threat")
+	float NextTargetSearchRadius = 1500.f;
+
 	UPROPERTY()
 	TArray<AActor*> AvailableActorsToLock;
 
@@ -67,4 +114,7 @@ private:
 
 	UPROPERTY()
 	FVector2D TargetLockWidgetSize = FVector2D::ZeroVector;
+
+	float RetargetTimer = 0.f;
+	float RetargetCooldownRemaining = 0.f;
 };
