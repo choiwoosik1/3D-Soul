@@ -63,10 +63,10 @@ struct FAttackPattern
 	UAnimMontage* Montage = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<FAttackProperties> Attacks;
+	float AttackRange = 200.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float AttackRange = 200.f;
+	TArray<FAttackProperties> Attacks;
 
 	// How the player has dealt with this pattern (runtime only)
 	UPROPERTY(VisibleAnywhere)
