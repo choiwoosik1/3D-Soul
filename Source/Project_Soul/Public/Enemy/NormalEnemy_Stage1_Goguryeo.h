@@ -42,6 +42,8 @@ protected:
 
 	virtual void PostInitializeComponents() override;
 
+	virtual void StartDecisionTimer() override;
+
 	virtual void DecideNextAction() override;
 
 	virtual void FireProjectile_Implementation() override;

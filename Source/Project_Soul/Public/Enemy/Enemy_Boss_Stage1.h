@@ -42,8 +42,6 @@ protected:
 
 	void UpdateDistance();
 
-	virtual void DecideNextAction() override;
-
 	virtual void ResumeCombat() override;
 
 	virtual void Die() override;

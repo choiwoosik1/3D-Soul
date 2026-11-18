@@ -63,10 +63,10 @@ struct FAttackPattern
 	UAnimMontage* Montage = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<FAttackProperties> Attacks;
+	float AttackRange = 200.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float AttackRange = 200.f;
+	TArray<FAttackProperties> Attacks;
 
 	// How the player has dealt with this pattern (runtime only)
 	UPROPERTY(VisibleAnywhere)
@@ -79,23 +79,12 @@ struct FPlayerActionRecord
 {
 	GENERATED_BODY()
 
-	// Dodge habit learning
-
-	// Dodge habit across all swings; supports swings that have few samples
-	UPROPERTY(VisibleAnywhere)
-	FDodgeStats DodgeFallback;
-
-	// Dodge bucket of the previous lunge in the pattern currently being executed (INDEX_NONE at pattern start)
-	int32 PatternPrevBucket = INDEX_NONE;
-
-	// Lunge attack currently being tracked
-	FAttackSample PendingSample;
-	
-	// Attack response habit learning
-
 	// Player habits that do not belong to a single pattern
 	UPROPERTY(VisibleAnywhere)
 	FPlayerBehaviorStats Behavior;
+
+	// Attack pattern currently running
+	FPatternRun Run;
 
 	// Swing currently being judged
 	FSwingObservation Swing;
@@ -108,4 +97,14 @@ struct FPlayerActionRecord
 
 	// Whether the target was attacking at the previous decision; a punish is rolled only when an attack begins
 	bool bTargetWasAttacking = false;
+
+	// Dodge habit across all swings; supports swings that have few samples
+	UPROPERTY(VisibleAnywhere)
+	FDodgeStats DodgeFallback;
+
+	// Dodge bucket of the previous lunge in the pattern currently being executed (INDEX_NONE at pattern start)
+	int32 PrevDodgeBucket = INDEX_NONE;
+
+	// Lunge attack currently being tracked
+	FAttackSample PendingDodgeSample;
 };

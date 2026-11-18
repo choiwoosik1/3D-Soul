@@ -42,8 +42,7 @@ void AEnemy_Boss_Stage1::StartBehavior()
 	// Initialize the behavior tree and update combat range values in the blackboard
 	AAIController* AIC = Cast<AAIController>(GetController());
 	AIC->RunBehaviorTree(BTAsset);
-	AIC->GetBlackboardComponent()->SetValueAsFloat(FName("MinCombatRange"), MinCombatRange);
-	AIC->GetBlackboardComponent()->SetValueAsFloat(FName("MaxCombatRange"), MaxCombatRange);
+	UpdateBlackboardCombatRange();
 
 	// Start a timer to continuously update the boss's movement speed based on the player's distance
 	GetWorldTimerManager().SetTimer(UpdateDistanceTimerHandle, this, &AEnemy_Boss_Stage1::UpdateDistance, 0.1f, true);
@@ -116,12 +115,6 @@ void AEnemy_Boss_Stage1::UpdateDistance()
 
 	SetSpeedByDistance(Distance);
 	Cast<AAIController>(GetController())->GetBlackboardComponent()->SetValueAsFloat(FName("DistanceToTarget"), Distance);
-}
-
-// Base decision logic for enemy's next action
-void AEnemy_Boss_Stage1::DecideNextAction()
-{
-	Super::DecideNextAction();
 }
 
 // Handle resuming to combat state, refocusing on the player and updates the blackboard

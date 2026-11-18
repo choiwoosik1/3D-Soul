@@ -54,6 +54,22 @@ void ANormalEnemy_Stage1_Goguryeo::PostInitializeComponents()
 	LeftWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Goguryeo::OnWeaponHitboxOverlap);
 }
 
+// Start the decision timer with a dynamic interval based on distance to the target
+// Allowing the ranged enemy more time to get away from the target before deciding next action
+void ANormalEnemy_Stage1_Goguryeo::StartDecisionTimer()
+{
+	float DecisionTime = DecisionInterval;
+
+	AAIController* AIC = Cast<AAIController>(GetController());
+	if (AIC && AIC->GetFocusActor())
+	{
+		float DistanceToTarget = FVector::Dist(GetActorLocation(), AIC->GetFocusActor()->GetActorLocation());
+		DecisionTime = FMath::GetMappedRangeValueClamped(FVector2D(0.f, MinCombatRange), FVector2D(3.f, DecisionInterval), DistanceToTarget);
+	}
+
+	GetWorldTimerManager().SetTimer(DecisionTimerHandle, this, &ANormalEnemy_Stage1_Goguryeo::OnDecisionTimer, DecisionTime, true);
+}
+
 // Use the melee poke whenever the target is close; otherwise decide like any other enemy
 void ANormalEnemy_Stage1_Goguryeo::DecideNextAction()
 {
@@ -159,8 +175,8 @@ void ANormalEnemy_Stage1_Goguryeo::FireProjectile_Implementation()
 				// DrawDebugSphere(GetWorld(), Actual, 20.f, 12, FColor::Red, false, 3.f);
 
 				// MissR = lateral miss of the aim point (with homing on, not the actual miss)
-				UE_LOG(LogTemp, Warning, TEXT("ShotSample\tRoll=%d\tDist=%.0f\tSpeed=%.0f\tLeadT=%.2f\tShiftR=%.0f\tErrF=%.0f\tErrR=%.0f\tMissR=%.0f"),
-					bTargetRolling, Distance, RawSpeed, LeadTime, ShiftRight, ErrorForward, ErrorRight, ErrorRight - ShiftRight);
+				// UE_LOG(LogTemp, Warning, TEXT("ShotSample\tRoll=%d\tDist=%.0f\tSpeed=%.0f\tLeadT=%.2f\tShiftR=%.0f\tErrF=%.0f\tErrR=%.0f\tMissR=%.0f"),
+				// 	bTargetRolling, Distance, RawSpeed, LeadTime, ShiftRight, ErrorForward, ErrorRight, ErrorRight - ShiftRight);
 
 				// Rolling shots are aimed by the fixed roll distance and measure a different thing; keep them out of the stats
 				if (bTargetRolling) return;

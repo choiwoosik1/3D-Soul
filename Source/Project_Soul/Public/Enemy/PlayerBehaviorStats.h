@@ -43,6 +43,17 @@ inline const TCHAR* LexToString(EAttackOutcome Outcome)
 	}
 }
 
+// A moment where the enemy holds its attack and watches what the player does
+struct FWaitObservation
+{
+	bool bActive = false;
+
+	// Player attacked while the enemy was waiting
+	bool bAttackedFirst = false;
+
+	float EndTime = 0.f;
+};
+
 // What has been seen of the player during the swing currently being judged
 struct FSwingObservation
 {
@@ -71,15 +82,20 @@ struct FSwingObservation
 	}
 };
 
-// A moment where the enemy holds its attack and watches what the player does
-struct FWaitObservation
+// What has been seen over the whole attack pattern currently running, for range learning
+struct FPatternRun
 {
-	bool bActive = false;
+	// Distance to the target when the pattern started
+	float StartDistance = 0.f;
 
-	// Player attacked while the enemy was waiting
-	bool bAttackedFirst = false;
+	// At least one swing touched the target: hit, guarded, or rolled through with invincibility
+	bool bReached = false;
 
-	float EndTime = 0.f;
+	// At least one swing was judged
+	bool bResolved = false;
+
+	// Every judged swing fell short without the target rolling
+	bool bAllOutRanged = true;
 };
 
 // Decayed yes/no rate, e.g. "how often does the player guard"

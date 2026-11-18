@@ -140,7 +140,7 @@ protected:
 
 	// Chance to apply aim offset to attacks
 	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float MaxApplyChance = 1.f;
+	float MaxAimShiftChance = 1.f;
 
 	// Maximum distance the enemy can aim off-target when applying aim offset
 	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
@@ -181,6 +181,18 @@ protected:
 
 	FTimerHandle PunishWatchTimerHandle;
 
+	// Highest learned range multiplier for patterns that move the enemy during the attack
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "1.0"))
+	float MaxRangeScaleMoving = 1.5f;
+
+	// Highest learned range multiplier for patterns that attack in place
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "1.0"))
+	float MaxRangeScaleStatic = 1.1f;
+
+	// How far MaxCombatRange may grow, as a multiple of its original value
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "1.0"))
+	float MaxCombatRangeLimitScale = 1.3f;
+
 	// Animation montages
 
 	UPROPERTY(EditAnywhere, Category = "Animation")
@@ -212,84 +224,39 @@ protected:
 
 	void SetCharacterState(EEnemyState NewState);
 
-	FVector ApplyAimOffset(const FVector& BaseLocation, const FVector& Forward, const FAttackProperties& Attack, int32 PrevBucket) const;
+	UFUNCTION(BlueprintCallable)
+	void ExitStagger();
 
-	int32 RecordSample(const FAttackSample& Sample);
+	UFUNCTION(BlueprintCallable)
+	void ExitGroggy();
 
-	AActor* GetCombatTarget() const;
-
-	void ObserveSwing();
-
-	virtual float ScorePattern(int32 Idx) const;
-
-	void DrawBehaviorDebug();
-
-	int32 PickPattern(float Distance, bool bFastOnly) const;
-
-	virtual float GetWaitChance() const;
-
-	float GetPunishChance() const;
-
-	void CloseWait();
-
-	void ClosePunishWatch(bool bPunished);
-
-	void ResetDecisionState();
-
-	void InterruptCurrentAttack();
+	virtual void ResumeCombat();
 
 	void DisableInvincible() { bIsInvincible = false; }
 
 	virtual void NotifyHealthBarUpdate(float NewCurrentHealth, float NewMaxHealth) {}
 
-public:
-	UPROPERTY(BlueprintAssignable)
-	FOnEnemyDied OnEnemyDied;
-
-	EEnemyState GetCharacterState() const { return CharacterState; }
-
-	FPlayerActionRecord& GetPlayerActionRecord() { return PlayerActionRecord; }
-
-	float GetCurrentHealth() const { return CurrentHealth; }
-
-	float GetMaxHealth() const { return MaxHealth; }
-
-	float GetMinCombatRange() const { return MinCombatRange; }
-
-	float GetMaxCombatRange() const { return MaxCombatRange; }
-
-	bool CanBeBackstabbed() const { return bAllowBackstab; }
-
-	bool CanBeCriticalHit() const { return CharacterState == EEnemyState::Groggy; }
-
-	bool CanBeParried() const { return bCanBeParried; }
-
-	virtual void SetSpeedByDistance(float Distance);
-
-	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, 
-		class AController* EventInstigator, AActor* DamageCauser) override;
-
 	virtual void StartDecisionTimer();
 
 	void OnDecisionTimer();
 
-	virtual void DecideNextAction();
+	AActor* GetCombatTarget() const;
 
-	UFUNCTION(BlueprintCallable)
-    void PerformAttackPattern(int32 AttackPatternIdx);
+	float GetPunishChance() const;
 
-	UFUNCTION(BlueprintCallable)
-	void FinishAttackPattern();
+	int32 PickPattern(float Distance, bool bFastOnly) const;
 
-	UFUNCTION(BlueprintCallable)
-	virtual void EnableWeaponHitbox();
+	virtual float ScorePattern(int32 Idx) const;
 
-	UFUNCTION(BlueprintCallable)
-	virtual void DisableWeaponHitbox();
+	virtual float GetWaitChance() const;
 
-	UFUNCTION()
-	void OnWeaponHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, 
-		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	void CloseWait();
+
+	void DrawBehaviorDebug();
+
+	void ObserveSwing();
+
+	void PerformAttackPattern(int32 AttackPatternIdx);
 
 	UFUNCTION(BlueprintCallable)
 	void EnableAttackRotation();
@@ -300,31 +267,72 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void EnableAttackMovement();
 
+	FVector ApplyAimOffset(const FVector& BaseLocation, const FVector& Forward, const FAttackProperties& Attack, int32 PrevBucket) const;
+
 	UFUNCTION(BlueprintCallable)
 	void DisableAttackMovement();
 
 	UFUNCTION(BlueprintCallable)
 	void SetParryable(bool bIsParryable) { bCanBeParried = bIsParryable; }
 
+	UFUNCTION(BlueprintCallable)
+	virtual void EnableWeaponHitbox();
+
+	void TryWeaponHit(AActor* OtherActor);
+
+	UFUNCTION(BlueprintCallable)
+	virtual void DisableWeaponHitbox();
+
+	UFUNCTION(BlueprintCallable)
+	void FinishAttackPattern();
+
+	int32 RecordSample(const FAttackSample& Sample);
+
+	void InterruptCurrentAttack();
+
+	void ClosePunishWatch(bool bPunished);
+
+	void UpdateRangeScale(int32 Idx);
+
+	virtual void Die();
+
+	void ResetDecisionState();
+
+public:
+	UPROPERTY(BlueprintAssignable)
+	FOnEnemyDied OnEnemyDied;
+
+	EEnemyState GetCharacterState() const { return CharacterState; }
+
+	float GetCurrentHealth() const { return CurrentHealth; }
+
+	float GetMaxHealth() const { return MaxHealth; }
+
+	bool CanBeBackstabbed() const { return bAllowBackstab && !bIsInvincible; }
+
+	bool CanBeCriticalHit() const { return CharacterState == EEnemyState::Groggy && !bIsInvincible; }
+
+	bool CanBeParried() const { return bCanBeParried; }
+
+	float GetMinCombatRange() const { return MinCombatRange; }
+
+	float GetMaxCombatRange() const;
+
+	void UpdateBlackboardCombatRange();
+
+	virtual void SetSpeedByDistance(float Distance);
+
+	virtual void NotifyHealthBarLockOn(bool bIsLockedOn) {}
+
 	void EnterPatrol();
 
 	void EnterAlert();
 
-	UFUNCTION(BlueprintCallable)
-	virtual void EnterCombat();
-
-	UFUNCTION(BlueprintCallable)
-	virtual void ResumeCombat();
+	void EnterCombat();
 
 	void EnterStagger();
 
-	UFUNCTION(BlueprintCallable)
-	virtual void ExitStagger();
-
 	void EnterGroggy();
-
-	UFUNCTION(BlueprintCallable)
-	virtual void ExitGroggy();
 
 	void GetBackstabbed(AActor* Attacker);
 
@@ -332,9 +340,16 @@ public:
 
 	void GetParried(AActor* Attacker);
 
-    virtual void Die();
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, 
+		class AController* EventInstigator, AActor* DamageCauser) override;
 
-	virtual void NotifyHealthBarLockOn(bool bIsLockedOn) {}
+	virtual void DecideNextAction();
+
+	float GetEffectiveRange(int32 Idx) const;
+
+	UFUNCTION()
+	void OnWeaponHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, 
+		int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) {	TryWeaponHit(OtherActor); }
 
 	virtual void ResetToInitialState();
 };

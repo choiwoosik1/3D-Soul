@@ -19,9 +19,3 @@ void ANormalEnemy_Stage1_Shilla::PostInitializeComponents()
 	RightWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Shilla::OnWeaponHitboxOverlap);
 	LeftWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Shilla::OnWeaponHitboxOverlap);
 }
-
-// Base decision logic for enemy's next action
-void ANormalEnemy_Stage1_Shilla::DecideNextAction()
-{
-	Super::DecideNextAction();
-}

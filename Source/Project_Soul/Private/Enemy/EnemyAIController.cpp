@@ -54,9 +54,7 @@ void AEnemyAIController::OnPossess(APawn* InPawn)
         if (!Enemy->GetBehaviorTreeAsset()) return;
         RunBehaviorTree(Enemy->GetBehaviorTreeAsset());
 
-		UBlackboardComponent* BBComp = GetBlackboardComponent();
-        BBComp->SetValueAsFloat(FName("MinCombatRange"),Enemy->GetMinCombatRange());
-        BBComp->SetValueAsFloat(FName("MaxCombatRange"),Enemy->GetMaxCombatRange());
+        Enemy->UpdateBlackboardCombatRange();
     }
 }
 

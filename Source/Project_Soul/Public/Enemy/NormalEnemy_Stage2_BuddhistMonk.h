@@ -26,16 +26,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Weapon")
 	FName LeftFootSocketName = TEXT("ball_l");
 
-	UPROPERTY(EditAnywhere, Category = "Combat")
-	float ProjectileSpeed = 800.f;
-
 	virtual void PostInitializeComponents() override;
-
-	virtual void DecideNextAction() override;
 
 	virtual void EnableWeaponHitbox() override;
 
 	virtual void DisableWeaponHitbox() override;
-
-	virtual void FireProjectile_Implementation() override;
 };

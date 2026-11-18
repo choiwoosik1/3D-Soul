@@ -18,9 +18,3 @@ void ANormalEnemy_Stage1_Baekje::PostInitializeComponents()
 	RightWeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, RightWeaponSocketName);
 	RightWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Baekje::OnWeaponHitboxOverlap);
 }
-
-// Base decision logic for enemy's next action
-void ANormalEnemy_Stage1_Baekje::DecideNextAction()
-{
-	Super::DecideNextAction();
-}

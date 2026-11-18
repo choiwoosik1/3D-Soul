@@ -25,7 +25,5 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void FireProjectile();
 
-	virtual void StartDecisionTimer() override;
-
 	virtual void SetSpeedByDistance(float Distance) override;
 };
