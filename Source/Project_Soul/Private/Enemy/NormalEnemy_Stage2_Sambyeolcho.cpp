@@ -20,12 +20,6 @@ void ANormalEnemy_Stage2_Sambyeolcho::PostInitializeComponents()
 	RightWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage2_Sambyeolcho::OnWeaponHitboxOverlap);
 }
 
-// Base decision logic for enemy's next action
-void ANormalEnemy_Stage2_Sambyeolcho::DecideNextAction()
-{
-	Super::DecideNextAction();
-}
-
 // Enables the backflip movement for the enemy character
 void ANormalEnemy_Stage2_Sambyeolcho::EnableBackFlip()
 {

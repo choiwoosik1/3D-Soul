@@ -37,12 +37,6 @@ void ANormalEnemy_Stage2_BuddhistMonk::PostInitializeComponents()
 	LeftWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage2_BuddhistMonk::OnWeaponHitboxOverlap);
 }
 
-// Base decision logic for enemy's next action
-void ANormalEnemy_Stage2_BuddhistMonk::DecideNextAction()
-{
-	Super::DecideNextAction();
-}
-
 void ANormalEnemy_Stage2_BuddhistMonk::EnableWeaponHitbox()
 {
 	Super::EnableWeaponHitbox();
@@ -53,14 +47,10 @@ void ANormalEnemy_Stage2_BuddhistMonk::EnableWeaponHitbox()
 
 void ANormalEnemy_Stage2_BuddhistMonk::DisableWeaponHitbox()
 {
-	Super::DisableWeaponHitbox();
+	if (RightWeaponHitbox->GetCollisionEnabled() == ECollisionEnabled::NoCollision) return;
 
 	RightFootHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	LeftFootHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-}
 
-// Fire a projectile towards the target, calculating the lead based on the target's velocity to increase hit accuracy
-void ANormalEnemy_Stage2_BuddhistMonk::FireProjectile_Implementation()
-{
-
+	Super::DisableWeaponHitbox();
 }

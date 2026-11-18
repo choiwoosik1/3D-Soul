@@ -18,9 +18,3 @@ void ANormalEnemy_Stage3_JoseonSoldier::PostInitializeComponents()
 	RightWeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, RightWeaponSocketName);
 	RightWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage3_JoseonSoldier::OnWeaponHitboxOverlap);
 }
-
-// Base decision logic for enemy's next action
-void ANormalEnemy_Stage3_JoseonSoldier::DecideNextAction()
-{
-	Super::DecideNextAction();
-}

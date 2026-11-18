@@ -21,6 +21,22 @@ void ANormalEnemy_Stage3_Musketeer::PostInitializeComponents()
 	LeftWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage3_Musketeer::OnWeaponHitboxOverlap);
 }
 
+// Start the decision timer with a dynamic interval based on distance to the target
+// Allowing the ranged enemy more time to get away from the target before deciding next action
+void ANormalEnemy_Stage3_Musketeer::StartDecisionTimer()
+{
+	float DecisionTime = DecisionInterval;
+
+	AAIController* AIC = Cast<AAIController>(GetController());
+	if (AIC && AIC->GetFocusActor())
+	{
+		float DistanceToTarget = FVector::Dist(GetActorLocation(), AIC->GetFocusActor()->GetActorLocation());
+		DecisionTime = FMath::GetMappedRangeValueClamped(FVector2D(0.f, MinCombatRange), FVector2D(3.f, DecisionInterval), DistanceToTarget);
+	}
+
+	GetWorldTimerManager().SetTimer(DecisionTimerHandle, this, &ANormalEnemy_Stage3_Musketeer::OnDecisionTimer, DecisionTime, true);
+}
+
 // Fire a projectile towards the target, calculating the lead based on the target's velocity to increase hit accuracy
 void ANormalEnemy_Stage3_Musketeer::FireProjectile_Implementation()
 {

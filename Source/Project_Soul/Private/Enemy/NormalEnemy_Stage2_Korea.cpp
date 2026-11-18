@@ -21,9 +21,3 @@ void ANormalEnemy_Stage2_Korea::PostInitializeComponents()
 
 	LeftWeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, LeftWeaponSocketName);
 }
-
-// Base decision logic for enemy's next action
-void ANormalEnemy_Stage2_Korea::DecideNextAction()
-{
-	Super::DecideNextAction();
-}
