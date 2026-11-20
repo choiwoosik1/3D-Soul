@@ -41,6 +41,7 @@ namespace
 // Sets default values
 ANormalEnemy_Stage1_Goguryeo::ANormalEnemy_Stage1_Goguryeo()
 {
+	RightWeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RightWeaponMesh"));
 	LeftWeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("LeftWeaponMesh"));
 }
 
@@ -50,6 +51,7 @@ void ANormalEnemy_Stage1_Goguryeo::PostInitializeComponents()
 	Super::PostInitializeComponents();
 
 	// Attach the weapon mesh to the character's hand socket
+	RightWeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, RightWeaponSocketName);
 	LeftWeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, LeftWeaponSocketName);
 	LeftWeaponHitbox->OnComponentBeginOverlap.AddDynamic(this, &ANormalEnemy_Stage1_Goguryeo::OnWeaponHitboxOverlap);
 }
@@ -203,4 +205,13 @@ void ANormalEnemy_Stage1_Goguryeo::FireProjectile_Implementation()
 	Projectile->InitHoming(Target, PredictedOffset);
 
 	Projectile->Launch(FireRotation.Vector(), Speed);
+}
+
+// Interrupt the current attack
+void ANormalEnemy_Stage1_Goguryeo::InterruptCurrentAttack()
+{
+	Super::InterruptCurrentAttack();
+	
+	// Let Blueprint reset bow string and arrow visibility
+	OnAttackInterrupted();
 }

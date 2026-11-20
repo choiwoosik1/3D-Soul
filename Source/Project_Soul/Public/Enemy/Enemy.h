@@ -66,7 +66,7 @@ protected:
 	TArray<AActor*> AlreadyHitActors;
 
 	// Weapon properties
-	UPROPERTY(EditAnywhere, Category = "Weapon")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
 	UMeshComponent* RightWeaponMesh = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Weapon")
@@ -75,7 +75,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Weapon")
 	FName RightWeaponSocketName = TEXT("HandGrip_R");
 
-	UPROPERTY(EditAnywhere, Category = "Weapon")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
 	UMeshComponent* LeftWeaponMesh = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Weapon")
@@ -85,37 +85,44 @@ protected:
 	FName LeftWeaponSocketName = TEXT("HandGrip_L");
 				
 	// Poise system
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Poise")
+	UPROPERTY(EditAnywhere, Category = "Poise")
 	float MaxPoise = 30.f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Poise")
+	UPROPERTY(VisibleAnywhere, Category = "Poise")
 	float LimitPoise;
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Poise")
+	UPROPERTY(VisibleAnywhere, Category = "Poise")
 	float CurrentPoise;
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Poise")
+	UPROPERTY(VisibleAnywhere, Category = "Poise")
 	float LimitPoiseReductionRate = 0.2f;
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Poise")
+	UPROPERTY(VisibleAnywhere, Category = "Poise")
 	float PoiseThreshold = 0.4f;
 	
 	// Movement stats
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	UPROPERTY(EditAnywhere, Category = "Movement")
 	float WalkSpeed = 150.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	UPROPERTY(EditAnywhere, Category = "Movement")
 	float RunSpeed = 400.f;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	UPROPERTY(EditAnywhere, Category = "Movement")
 	float StrafeSpeed = 125.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float CloseToTarget = 40.f;
+
+	UPROPERTY(EditAnywhere, Category = "Movement")
 	float MinCombatRange = 150.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	UPROPERTY(EditAnywhere, Category = "Movement")
 	float MaxCombatRange = 500.f;
-	
+
+	// How far MaxCombatRange may grow, as a multiple of its original value
+	UPROPERTY(EditAnywhere, Category = "Movement", meta = (ClampMin = "1.0"))
+	float MaxCombatRangeLimitScale = 1.3f;
+
 	// AI system
 	UPROPERTY(EditAnywhere, Category = "AI")
 	class UBehaviorTree* BTAsset;
@@ -138,14 +145,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "AI")
 	FPlayerActionRecord PlayerActionRecord;
 
-	// Chance to apply aim offset to attacks
-	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float MaxAimShiftChance = 1.f;
-
-	// Maximum distance the enemy can aim off-target when applying aim offset
-	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
-	float MaxAimShift = 600.f;
-
 	UPROPERTY(EditAnywhere, Category = "AI")
 	bool bShowBehaviorDebug = false;
 
@@ -157,10 +156,6 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float RepeatPenalty = 0.5f;
 
-	float AttackStartTime = 0.f;
-
-	FTimerHandle SwingObserveTimerHandle;
-
 	// Chance to hold an attack when the player shows no tendency either way (0 = never wait)
 	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0", ClampMax = "0.5"))
 	float BaseWaitChance = 0.5f;
@@ -171,7 +166,7 @@ protected:
 
 	// A pattern can be used as a punish if its startup is within this many seconds of the enemy's fastest pattern
 	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
-	float PunishStartupMargin = 0.15f;
+	float PunishStartupMargin = 0.2f;
 
 	// How strongly patterns the player hits back after are avoided
 	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
@@ -181,6 +176,48 @@ protected:
 
 	FTimerHandle PunishWatchTimerHandle;
 
+	// Time after a punish during which attacks are not answered; a random length in this range is picked each time
+	UPROPERTY(EditAnywhere, Category = "AI")
+	FFloatInterval PunishCooldown = FFloatInterval(2.f, 4.f);
+
+	float NextPunishTime = 0.f;
+
+	// How far ahead along the target's roll the landing point is predicted, in seconds
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
+	float RollLookAhead = 0.5f;
+
+	// Seconds after the target's roll starts at which a roll catch should open its first hitbox
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
+	float RollCatchLandTime = 0.8f;
+
+	// How much later than the landing time a pattern may still arrive to be used as a roll catch
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
+	float RollCatchTolerance = 0.2f;
+
+	// Time after a roll catch during which rolls are not answered; a random length in this range is picked each time
+	UPROPERTY(EditAnywhere, Category = "AI")
+	FFloatInterval RollCatchCooldown = FFloatInterval(3.f, 6.f);
+
+	float NextRollCatchTime = 0.f;
+
+	FTimerHandle RollCatchTimerHandle;
+
+	int32 PendingCatchIdx = INDEX_NONE;
+
+	float PendingCatchDistance = 0.f;
+
+	float AttackStartTime = 0.f;
+
+	FTimerHandle SwingObserveTimerHandle;
+
+	// Chance to apply aim offset to attacks
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float MaxAimShiftChance = 1.f;
+
+	// Maximum distance the enemy can aim off-target when applying aim offset
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
+	float MaxAimShift = 600.f;
+
 	// Highest learned range multiplier for patterns that move the enemy during the attack
 	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "1.0"))
 	float MaxRangeScaleMoving = 1.5f;
@@ -189,9 +226,13 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "1.0"))
 	float MaxRangeScaleStatic = 1.1f;
 
-	// How far MaxCombatRange may grow, as a multiple of its original value
-	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "1.0"))
-	float MaxCombatRangeLimitScale = 1.3f;
+	// Share of each learned sample that same-class enemies receive (0 = learn alone)
+	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float LearningShareRatio = 0.3f;
+
+	TArray<TWeakObjectPtr<AEnemy>> Peers;
+
+	bool bPeersCached = false;
 
 	// Animation montages
 
@@ -242,21 +283,25 @@ protected:
 
 	AActor* GetCombatTarget() const;
 
-	float GetPunishChance() const;
+	float GetReactionChance(EReactionAttack Type) const;
 
-	int32 PickPattern(float Distance, bool bFastOnly) const;
+	bool StartReactionAttack(EReactionAttack Type, float Distance);
+
+	int32 PickPattern(float Distance, EReactionAttack Reaction = EReactionAttack::None) const;
 
 	virtual float ScorePattern(int32 Idx) const;
 
 	virtual float GetWaitChance() const;
 
-	void CloseWait();
-
 	void DrawBehaviorDebug();
 
-	void ObserveSwing();
+	void StartPendingCatch();
+
+	void BeginReactionAttack(int32 Idx, EReactionAttack Type, float Distance);
 
 	void PerformAttackPattern(int32 AttackPatternIdx);
+
+	void ObserveSwing();
 
 	UFUNCTION(BlueprintCallable)
 	void EnableAttackRotation();
@@ -283,16 +328,24 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	virtual void DisableWeaponHitbox();
 
+	int32 RecordSample(const FAttackSample& Sample);
+
+	virtual void InterruptCurrentAttack();
+
 	UFUNCTION(BlueprintCallable)
 	void FinishAttackPattern();
 
-	int32 RecordSample(const FAttackSample& Sample);
+	void CloseWait();
 
-	void InterruptCurrentAttack();
+	void CloseReactionAttempt(bool bHit);
 
 	void ClosePunishWatch(bool bPunished);
 
 	void UpdateRangeScale(int32 Idx);
+
+	void ShareLearning(TFunctionRef<void(AEnemy& Enemy, float Weight)> Apply);
+
+	const TArray<TWeakObjectPtr<AEnemy>>& GetPeers();
 
 	virtual void Die();
 

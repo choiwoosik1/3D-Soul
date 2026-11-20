@@ -47,4 +47,10 @@ protected:
 	virtual void DecideNextAction() override;
 
 	virtual void FireProjectile_Implementation() override;
+	
+	virtual void InterruptCurrentAttack();
+
+	// Called when an attack is interrupted, so Blueprint can reset attack visuals
+	UFUNCTION(BlueprintImplementableEvent, Category = "Combat")
+	void OnAttackInterrupted();
 };

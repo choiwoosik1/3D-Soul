@@ -21,6 +21,9 @@ namespace BehaviorStats
 
 	// Share of punish attempts assumed to land
 	constexpr float PunishHitPrior = 0.6f;
+
+	// Share of roll catches assumed to land
+	constexpr float RollCatchHitPrior = 0.5f;
 }
 
 // Result of one swing against the player
@@ -40,6 +43,24 @@ inline const TCHAR* LexToString(EAttackOutcome Outcome)
 	case EAttackOutcome::Dodged:    return TEXT("Dodged");
 	case EAttackOutcome::Guarded:   return TEXT("Guarded");
 	default:                        return TEXT("OutRanged");
+	}
+}
+
+// Why the current attack was started outside the normal decision flow
+enum class EReactionAttack : uint8
+{
+	None,
+	Punish,     // Answers the target's attack
+	RollCatch   // Lands as the target's roll ends
+};
+
+inline const TCHAR* LexToString(EReactionAttack Type)
+{
+	switch (Type)
+	{
+	case EReactionAttack::Punish:    return TEXT("Punish");
+	case EReactionAttack::RollCatch: return TEXT("RollCatch");
+	default:                         return TEXT("None");
 	}
 }
 
@@ -110,10 +131,11 @@ struct FDecayedRate
 	UPROPERTY(VisibleAnywhere)
 	float Total = 0.f;
 
-	void Record(bool bPositive)
+	void Record(bool bPositive, float Weight = 1.f)
 	{
-		Positive = Positive * BehaviorStats::Decay + (bPositive ? 1.f : 0.f);
-		Total = Total * BehaviorStats::Decay + 1.f;
+		const float SampleDecay = FMath::Pow(BehaviorStats::Decay, Weight);
+		Positive = Positive * SampleDecay + (bPositive ? Weight : 0.f);
+		Total = Total * SampleDecay + Weight;
 	}
 
 	// Returns PriorRate while there is no data, and moves toward the observed rate as samples arrive
@@ -155,12 +177,20 @@ struct FPatternOutcomeStats
 	UPROPERTY(VisibleAnywhere)
 	float StartupTime = 0.f;
 
-	void Record(EAttackOutcome Outcome)
+	// How often this pattern landed when used as a punish / as a roll catch
+	UPROPERTY(VisibleAnywhere)
+	FDecayedRate PunishHit;
+
+	UPROPERTY(VisibleAnywhere)
+	FDecayedRate CatchHit;
+
+	void Record(EAttackOutcome Outcome, float Weight = 1.f)
 	{
-		Hit = Hit * BehaviorStats::Decay + (Outcome == EAttackOutcome::Hit ? 1.f : 0.f);
-		Dodged = Dodged * BehaviorStats::Decay + (Outcome == EAttackOutcome::Dodged ? 1.f : 0.f);
-		Guarded = Guarded * BehaviorStats::Decay + (Outcome == EAttackOutcome::Guarded ? 1.f : 0.f);
-		OutRanged = OutRanged * BehaviorStats::Decay + (Outcome == EAttackOutcome::OutRanged ? 1.f : 0.f);
+		const float SampleDecay = FMath::Pow(BehaviorStats::Decay, Weight);
+		Hit = Hit * SampleDecay + (Outcome == EAttackOutcome::Hit ? Weight : 0.f);
+		Dodged = Dodged * SampleDecay + (Outcome == EAttackOutcome::Dodged ? Weight : 0.f);
+		Guarded = Guarded * SampleDecay + (Outcome == EAttackOutcome::Guarded ? Weight : 0.f);
+		OutRanged = OutRanged * SampleDecay + (Outcome == EAttackOutcome::OutRanged ? Weight : 0.f);
 	}
 
 	float GetHitRate(float PriorRate) const
@@ -188,4 +218,8 @@ struct FPlayerBehaviorStats
 	// How often an attack started as a punish landed its first swing
 	UPROPERTY(VisibleAnywhere)
 	FDecayedRate Punish;
+
+	// How often an attack started as a roll catch landed its first swing
+	UPROPERTY(VisibleAnywhere)
+	FDecayedRate RollCatch;
 };
