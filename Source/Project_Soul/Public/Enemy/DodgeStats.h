@@ -85,28 +85,32 @@ struct FDodgeStats
 	}
 
 	// Add one observation: the target's displacement (Forward, Right) between aim commit and attack resolution.
-	// PrevBucket is the dodge this one followed (INDEX_NONE if none). Returns the bucket of this observation.
-	int32 Record(const FVector2D& Offset, int32 PrevBucket)
+	// PrevBucket is the dodge this one followed (INDEX_NONE if none). Weight below 1 is a sample shared by another enemy.
+	// Returns the bucket of this observation.
+	int32 Record(const FVector2D& Offset, int32 PrevBucket, float Weight = 1.f)
 	{
 		if (Buckets.Num() != BucketCount) Buckets.SetNum(BucketCount);
 		if (Transitions.Num() != BucketCount * BucketCount) Transitions.SetNumZeroed(BucketCount * BucketCount);
 
 		const int32 Bucket = static_cast<int32>(Classify(Offset));
 
-		// Direction stats: dodge distance of each direction, and the prediction when there is no previous dodge
-		for (FDodgeBucketStat& Stat : Buckets) Stat.Weight *= Decay;
-		FDodgeBucketStat& Stat = Buckets[Bucket];
-		Stat.Weight += 1.f;
+		// A lighter sample pushes old observations out less
+		const float SampleDecay = FMath::Pow(Decay, Weight);
 
-		// Weighted running mean: the new sample has weight 1 against the (already decayed) accumulated weight
-		Stat.MeanOffset += (Offset - Stat.MeanOffset) / Stat.Weight;
+		// Direction stats: dodge distance of each direction, and the prediction when there is no previous dodge
+		for (FDodgeBucketStat& Stat : Buckets) Stat.Weight *= SampleDecay;
+		FDodgeBucketStat& Stat = Buckets[Bucket];
+		Stat.Weight += Weight;
+
+		// Weighted running mean: the new sample has its weight against the (already decayed) accumulated weight
+		Stat.MeanOffset += (Offset - Stat.MeanOffset) * (Weight / Stat.Weight);
 
 		// Transition stats: only the row of the previous dodge learns what followed it
 		if (IsValidBucket(PrevBucket))
 		{
 			float* Row = &Transitions[PrevBucket * BucketCount];
-			for (int32 i = 0; i < BucketCount; ++i) Row[i] *= Decay;
-			Row[Bucket] += 1.f;
+			for (int32 i = 0; i < BucketCount; ++i) Row[i] *= SampleDecay;
+			Row[Bucket] += Weight;
 		}
 		return Bucket;
 	}

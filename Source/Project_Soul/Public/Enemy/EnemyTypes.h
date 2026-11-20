@@ -63,6 +63,9 @@ struct FAttackPattern
 	UAnimMontage* Montage = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bAllowRollCatch = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float AttackRange = 200.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -92,11 +95,14 @@ struct FPlayerActionRecord
 	// Wait currently in progress
 	FWaitObservation Wait;
 
-	// The attack being executed was started as a punish
-	bool bPunishAttack = false;
-
 	// Whether the target was attacking at the previous decision; a punish is rolled only when an attack begins
 	bool bTargetWasAttacking = false;
+
+	// Whether the target was rolling at the previous decision; a roll catch is rolled only when a roll begins
+	bool bTargetWasRolling = false;
+
+	// Why the attack being executed was started, if it is a reaction to the target
+	EReactionAttack ReactionAttack = EReactionAttack::None;
 
 	// Dodge habit across all swings; supports swings that have few samples
 	UPROPERTY(VisibleAnywhere)
