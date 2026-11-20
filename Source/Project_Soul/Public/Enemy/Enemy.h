@@ -66,7 +66,7 @@ protected:
 	TArray<AActor*> AlreadyHitActors;
 
 	// Weapon properties
-	UPROPERTY(EditAnywhere, Category = "Weapon")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
 	UMeshComponent* RightWeaponMesh = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Weapon")
@@ -75,7 +75,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Weapon")
 	FName RightWeaponSocketName = TEXT("HandGrip_R");
 
-	UPROPERTY(EditAnywhere, Category = "Weapon")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
 	UMeshComponent* LeftWeaponMesh = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Weapon")
@@ -330,7 +330,7 @@ protected:
 
 	int32 RecordSample(const FAttackSample& Sample);
 
-	void InterruptCurrentAttack();
+	virtual void InterruptCurrentAttack();
 
 	UFUNCTION(BlueprintCallable)
 	void FinishAttackPattern();

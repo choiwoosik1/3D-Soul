@@ -351,6 +351,7 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
     if (CurrentHealth <= 0.0f)
     {
         Die();
+        bIsInvincible = false;
         return ActualDamage;
     }
 
