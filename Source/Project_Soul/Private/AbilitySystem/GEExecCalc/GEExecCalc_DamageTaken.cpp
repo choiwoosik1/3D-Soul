@@ -86,7 +86,7 @@ void UGEExecCalc_DamageTaken::Execute_Implementation(const FGameplayEffectCustom
     // 캡처 실패 시 기본값(0.f) 유지
     float SourceAttackPower = 0.f;
     ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(GetKwangDamageCapture().AttackPowerDef, EvaluateParameters, SourceAttackPower);
-    Debug::Print(TEXT("SourceAttackPower"), SourceAttackPower);
+    // Debug::Print(TEXT("SourceAttackPower"), SourceAttackPower);
 
     // [SetByCaller 값 파싱] 어빌리티에서 주입한 데미지 관련 수치들을 태그로 구분해서 꺼냄
     // SetByCallerTagMagnitudes: 태그-수치 쌍으로 저장된 Map을 순회
@@ -100,28 +100,28 @@ void UGEExecCalc_DamageTaken::Execute_Implementation(const FGameplayEffectCustom
         if (TagMagnitude.Key.MatchesTagExact(KwangGameplayTags::Shared_SetByCaller_BaseDamage))
         {
             BaseDamage = TagMagnitude.Value;
-            Debug::Print(TEXT("BaseDamage"), BaseDamage);
+            // Debug::Print(TEXT("BaseDamage"), BaseDamage);
         }
 
         // 라이트 어택 태그와 일치하면 콤보 카운트 저장 (콤보 수에 따라 데미지 배율 적용 예정)
         if (TagMagnitude.Key.MatchesTagExact(KwangGameplayTags::Player_SetByCaller_AttackType_Light))
         {
             UsedLightAttackComboCount = TagMagnitude.Value;
-            Debug::Print(TEXT("UsedLightAttackComboCount"), UsedLightAttackComboCount);
+            // Debug::Print(TEXT("UsedLightAttackComboCount"), UsedLightAttackComboCount);
         }
 
         // 헤비 어택 태그와 일치하면 콤보 카운트 저장
         if (TagMagnitude.Key.MatchesTagExact(KwangGameplayTags::Player_SetByCaller_AttackType_Heavy))
         {
             UsedHeavyAttackComboCount = TagMagnitude.Value;
-            Debug::Print(TEXT("UsedHeavyAttackComboCount"), UsedHeavyAttackComboCount);
+            // Debug::Print(TEXT("UsedHeavyAttackComboCount"), UsedHeavyAttackComboCount);
         }
     }
 
     // [방어력 캡처] 피격자의 DefensePower 어트리뷰트 실시간 값을 꺼내서 저장
     float TargetDefensePower = 0.f;
     ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(GetKwangDamageCapture().DefensePowerDef, EvaluateParameters, TargetDefensePower);
-    Debug::Print(TEXT("TargetDefensePower"), TargetDefensePower);
+    // Debug::Print(TEXT("TargetDefensePower"), TargetDefensePower);
 
     // [라이트 어택 콤보 데미지 보정]
     // 콤보가 쌓일수록 데미지가 증가하는 구조
