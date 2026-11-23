@@ -317,8 +317,7 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
     }
 
     // A hit this soon after a pattern started was already on its way, so it says nothing about the pattern
-    constexpr float PunishIgnoreTime = 0.5f;
-    if (GetWorld()->GetTimeSeconds() - AttackStartTime >= PunishIgnoreTime)
+    if (GetWorld()->GetTimeSeconds() - AttackStartTime >= BehaviorStats::PunishIgnoreTime)
     {
         ClosePunishWatch(true);
     }
@@ -417,10 +416,17 @@ void AEnemy::DecideNextAction()
     PlayerActionRecord.bTargetWasAttacking = bTargetAttacking;
     PlayerActionRecord.bTargetWasRolling = bTargetRolling;
 
-    FWaitObservation& Wait = PlayerActionRecord.Wait;
-    if (Wait.bActive && bTargetAttacking)
+    // A counterattack right after a pattern counts against it even if it falls short
+    if (bAttackStarted && PunishWatchIdx != INDEX_NONE)
     {
-        Wait.bAttackedFirst = true;
+        ClosePunishWatch(true);
+    }
+
+    FWaitObservation& Wait = PlayerActionRecord.Wait;
+    if (Wait.bActive)
+    {
+        Wait.bAttackedFirst |= bTargetAttacking;
+        Wait.bRolled |= bTargetRolling;
     }
 
     // A roll catch is waiting for its moment; nothing else is decided until it starts
@@ -459,6 +465,7 @@ void AEnemy::DecideNextAction()
     {
         // Hold the attack for a moment and watch what the target does
         Wait.bActive = true;
+        Wait.StartTime = Now;
         Wait.EndTime = Now + FMath::FRandRange(WaitDuration.Min, WaitDuration.Max);
         // UE_LOG(LogTemp, Warning, TEXT("WaitStart Chance=%.2f"), GetWaitChance());
         return;
@@ -477,17 +484,21 @@ AActor* AEnemy::GetCombatTarget() const
     return AIC ? AIC->GetFocusActor() : nullptr;
 }
 
-// Chance to use a reaction attack; follows how often past reactions of that kind landed
+// Chance to use a reaction attack.
+// Punish follows how often past punishes landed. Roll catch follows how often the player rolls while not attacked,
+// scaled down when catches stop landing.
 float AEnemy::GetReactionChance(EReactionAttack Type) const
 {
     constexpr float MinChance = 0.2f;
     constexpr float MaxChance = 0.9f;
 
     const FPlayerBehaviorStats& Behavior = PlayerActionRecord.Behavior;
-    const float HitRate = Type == EReactionAttack::RollCatch
-        ? Behavior.RollCatch.Get(BehaviorStats::RollCatchHitPrior)
-        : Behavior.Punish.Get(BehaviorStats::PunishHitPrior);
-    return FMath::Clamp(HitRate, MinChance, MaxChance);
+    if (Type == EReactionAttack::RollCatch)
+    {
+        const float Habit = FMath::Clamp(Behavior.RollHabit.Get(BehaviorStats::RollHabitPrior), MinChance, MaxChance);
+        return Habit * Behavior.RollCatch.Get(BehaviorStats::RollCatchHitPrior);
+    }
+    return FMath::Clamp(Behavior.Punish.Get(BehaviorStats::PunishHitPrior), MinChance, MaxChance);
 }
 
 // Start a reaction attack judged against the given distance. A roll catch is held back
@@ -500,12 +511,17 @@ bool AEnemy::StartReactionAttack(EReactionAttack Type, float Distance)
     float Delay = 0.f;
     if (Type == EReactionAttack::RollCatch)
     {
-        const float CatchRemaining = RollCatchLandTime - DecisionInterval * 0.5f;
-        Delay = CatchRemaining - Patterns[Idx].OutcomeStats.StartupTime;
+        // Faster patterns are held back so the first hitbox opens as the roll ends; slower ones start at once.
+        // A pattern not measured yet also starts at once.
+        const float Startup = Patterns[Idx].OutcomeStats.StartupTime;
+        if (Startup > 0.f)
+        {
+            Delay = RollCatchLandTime - DecisionInterval * 0.5f - Startup;
+        }
     }
 
     // UE_LOG(LogTemp, Warning, TEXT("Reaction %s P=%d Chance=%.2f Distance=%.0f Delay=%.2f"),
-    //     LexToString(Type), Idx, GetReactionChance(Type), Distance, FMath::Max(Delay, 0.f));
+    //    LexToString(Type), Idx, GetReactionChance(Type), Distance, FMath::Max(Delay, 0.f));
 
     if (Delay > 0.f)
     {
@@ -557,8 +573,8 @@ int32 AEnemy::PickPattern(float Distance, EReactionAttack Reaction) const
             break;
 
         case EReactionAttack::RollCatch:
-            // The first hitbox must open by the end of the roll; faster patterns are held back to match
-            if (!Patterns[i].bAllowRollCatch || Startup <= 0.f || Startup > CatchRemaining + RollCatchTolerance) continue;
+            // Patterns are chosen for catching by hand; StartReactionAttack delays the start to match the roll
+            if (!Patterns[i].bAllowRollCatch) continue;
             Weights[i] = Stats.CatchHit.Get(BehaviorStats::RollCatchHitPrior);
             break;
 
@@ -648,9 +664,10 @@ void AEnemy::DrawBehaviorDebug()
     if (!bShowBehaviorDebug) return;
 
     const FPlayerBehaviorStats& Behavior = PlayerActionRecord.Behavior;
-    FString Text = FString::Printf(TEXT("Guard %.0f%%  Aggression %.0f%%  Wait %.0f%%  Punish %.0f%%  Catch %.0f%%  CombatRange %.0f%s"),
+    FString Text = FString::Printf(TEXT("Guard %.0f%%  Aggression %.0f%%  Roll %.0f%%  Wait %.0f%%  Punish %.0f%%  Catch %.0f%%  CombatRange %.0f%s"),
         Behavior.Guard.Get(BehaviorStats::GuardPrior) * 100.f,
         Behavior.Aggression.Get(BehaviorStats::AggressionPrior) * 100.f,
+        Behavior.RollHabit.Get(BehaviorStats::RollHabitPrior) * 100.f,
         GetWaitChance() * 100.f,
         GetReactionChance(EReactionAttack::Punish) * 100.f,
         GetReactionChance(EReactionAttack::RollCatch) * 100.f,
@@ -689,19 +706,19 @@ void AEnemy::BeginReactionAttack(int32 Idx, EReactionAttack Type, float Distance
     PerformAttackPattern(Idx);
     PlayerActionRecord.ReactionAttack = Type;
 
-    // Leave this kind of reaction unused for a while so it does not answer every attack or roll
-    const bool bCatch = Type == EReactionAttack::RollCatch;
-    const FFloatInterval& Cooldown = bCatch ? RollCatchCooldown : PunishCooldown;
-    float& NextTime = bCatch ? NextRollCatchTime : NextPunishTime;
-    NextTime = GetWorld()->GetTimeSeconds() + FMath::FRandRange(Cooldown.Min, Cooldown.Max);
+    // The cooldown starts when this pattern ends, so a long pattern does not use up its own cooldown
+    CooldownReaction = Type;
 
-    if (bCatch)
+    if (Type == EReactionAttack::RollCatch)
     {
         // The roll that triggered the catch is not a dodge of it
         PlayerActionRecord.Swing.bRollHandled = true;
 
         // Range learning should judge the pattern against where the target was heading
         PlayerActionRecord.Run.StartDistance = Distance;
+
+        // The roll that started the catch was seen during the wait; the wait ends here, too early to judge holding back
+        CloseWait(true);
     }
 }
 
@@ -716,6 +733,7 @@ void AEnemy::PerformAttackPattern(int32 AttackPatternIdx)
 
     // Decisions stop while attacking, so the next one must judge the target's action afresh
     PlayerActionRecord.bTargetWasAttacking = false;
+    PlayerActionRecord.bTargetAttackingInPattern = false;
     PlayerActionRecord.bTargetWasRolling = false;
 
     // From here until shortly after the pattern ends, being hit counts against this pattern
@@ -765,6 +783,15 @@ void AEnemy::ObserveSwing()
     }
 
     const EPlayerAction Action = FPlayerSnapshot::Capture(Target).Action;
+
+    // A counterattack begun during the pattern counts against it even if it falls short
+    const bool bTargetAttacking = Action == EPlayerAction::Attacking;
+    if (bTargetAttacking && !PlayerActionRecord.bTargetAttackingInPattern
+        && GetWorld()->GetTimeSeconds() - AttackStartTime >= BehaviorStats::PunishIgnoreTime)
+    {
+        ClosePunishWatch(true);
+    }
+    PlayerActionRecord.bTargetAttackingInPattern = bTargetAttacking;
 
     // An attack the player begins during the windup still counts for the wait that led to this pattern
     if (Action == EPlayerAction::Attacking && PlayerActionRecord.Wait.bActive)
@@ -1086,6 +1113,7 @@ void AEnemy::InterruptCurrentAttack()
 
     // A punish stopped before its first swing resolved has failed
     CloseReactionAttempt(false);
+    StartReactionCooldown();
 
     CloseWait();
     PlayerActionRecord.bTargetWasAttacking = false;
@@ -1104,6 +1132,8 @@ void AEnemy::FinishAttackPattern()
     CloseWait();
     PlayerActionRecord.ReactionAttack = EReactionAttack::None;
 
+    StartReactionCooldown();
+
     // Keep the punish watch open for a moment after the pattern, then record that nothing happened
     constexpr float PunishGrace = 0.3f;
     GetWorldTimerManager().SetTimer(PunishWatchTimerHandle,
@@ -1114,18 +1144,44 @@ void AEnemy::FinishAttackPattern()
     ResumeCombat();
 }
 
-// End the wait in progress and record whether the player attacked during it
-void AEnemy::CloseWait()
+// Start the cooldown of the reaction attack that just ended, counted from the end of its pattern
+void AEnemy::StartReactionCooldown()
 {
+    if (CooldownReaction == EReactionAttack::None) return;
+
+    const bool bCatch = CooldownReaction == EReactionAttack::RollCatch;
+    const FFloatInterval& Cooldown = bCatch ? RollCatchCooldown : PunishCooldown;
+    float& NextTime = bCatch ? NextRollCatchTime : NextPunishTime;
+    NextTime = GetWorld()->GetTimeSeconds() + FMath::FRandRange(Cooldown.Min, Cooldown.Max);
+
+    CooldownReaction = EReactionAttack::None;
+}
+
+// End the wait in progress and record what the player did during it.
+// Doing nothing through a short wait says little, so it counts in proportion to how long the player was watched.
+// bCutShort: the enemy ended the wait early, so not attacking is not counted as holding back.
+void AEnemy::CloseWait(bool bCutShort)
+{
+    constexpr float FullWeightTime = 1.5f;
+
     FWaitObservation& Wait = PlayerActionRecord.Wait;
     if (!Wait.bActive) return;
 
     const bool bAttackedFirst = Wait.bAttackedFirst;
-    ShareLearning([bAttackedFirst](AEnemy& Enemy, float Weight)
+    const bool bRolled = Wait.bRolled;
+    const float Watched = GetWorld()->GetTimeSeconds() - Wait.StartTime;
+    const float QuietWeight = FMath::Clamp(Watched / FullWeightTime, 0.f, 1.f);
+    const float AggressionWeight = bAttackedFirst ? 1.f : (bCutShort ? 0.f : QuietWeight);
+    const float RollWeight = bRolled ? 1.f : QuietWeight;
+
+    // A zero weight records nothing
+    ShareLearning([bAttackedFirst, bRolled, AggressionWeight, RollWeight](AEnemy& Enemy, float Weight)
         {
-            Enemy.PlayerActionRecord.Behavior.Aggression.Record(bAttackedFirst, Weight);
+            FPlayerBehaviorStats& Behavior = Enemy.PlayerActionRecord.Behavior;
+            Behavior.Aggression.Record(bAttackedFirst, Weight * AggressionWeight);
+            Behavior.RollHabit.Record(bRolled, Weight * RollWeight);
         });
-    // UE_LOG(LogTemp, Warning, TEXT("WaitResult AttackedFirst=%d"), bAttackedFirst);
+    // UE_LOG(LogTemp, Warning, TEXT("WaitResult AttackedFirst=%d Rolled=%d Watched=%.2f"), bAttackedFirst, bRolled, Watched);
 
     Wait = FWaitObservation();
 }
@@ -1363,10 +1419,10 @@ void AEnemy::ResetDecisionState()
 	PlayerActionRecord.PrevDodgeBucket = INDEX_NONE;
 	PlayerActionRecord.PendingDodgeSample.bActive = false;
 
+    CooldownReaction = EReactionAttack::None;
     NextPunishTime = 0.f;
     PunishWatchIdx = INDEX_NONE;
     GetWorldTimerManager().ClearTimer(PunishWatchTimerHandle);
-
     NextRollCatchTime = 0.f;
     PendingCatchIdx = INDEX_NONE;
     GetWorldTimerManager().ClearTimer(RollCatchTimerHandle);
