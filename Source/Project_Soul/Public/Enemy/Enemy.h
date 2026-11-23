@@ -154,7 +154,7 @@ protected:
 
 	// Weight multiplier for the pattern that was used last
 	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float RepeatPenalty = 0.5f;
+	float RepeatPenalty = 0.4f;
 
 	// Chance to hold an attack when the player shows no tendency either way (0 = never wait)
 	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0", ClampMax = "0.5"))
@@ -162,7 +162,10 @@ protected:
 
 	// How long one wait lasts; a random length in this range is picked each time
 	UPROPERTY(EditAnywhere, Category = "AI")
-	FFloatInterval WaitDuration = FFloatInterval(0.4f, 1.8f);
+	FFloatInterval WaitDuration = FFloatInterval(0.5f, 2.f);
+
+	// Reaction whose cooldown starts when the running pattern ends
+	EReactionAttack CooldownReaction = EReactionAttack::None;
 
 	// A pattern can be used as a punish if its startup is within this many seconds of the enemy's fastest pattern
 	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
@@ -178,25 +181,21 @@ protected:
 
 	// Time after a punish during which attacks are not answered; a random length in this range is picked each time
 	UPROPERTY(EditAnywhere, Category = "AI")
-	FFloatInterval PunishCooldown = FFloatInterval(2.f, 4.f);
+	FFloatInterval PunishCooldown = FFloatInterval(3.f, 5.f);
 
 	float NextPunishTime = 0.f;
 
 	// How far ahead along the target's roll the landing point is predicted, in seconds
 	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
-	float RollLookAhead = 0.5f;
+	float RollLookAhead = 0.6f;
 
 	// Seconds after the target's roll starts at which a roll catch should open its first hitbox
 	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
 	float RollCatchLandTime = 0.8f;
 
-	// How much later than the landing time a pattern may still arrive to be used as a roll catch
-	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
-	float RollCatchTolerance = 0.2f;
-
 	// Time after a roll catch during which rolls are not answered; a random length in this range is picked each time
 	UPROPERTY(EditAnywhere, Category = "AI")
-	FFloatInterval RollCatchCooldown = FFloatInterval(3.f, 6.f);
+	FFloatInterval RollCatchCooldown = FFloatInterval(4.f, 6.f);
 
 	float NextRollCatchTime = 0.f;
 
@@ -220,7 +219,7 @@ protected:
 
 	// Highest learned range multiplier for patterns that move the enemy during the attack
 	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "1.0"))
-	float MaxRangeScaleMoving = 1.5f;
+	float MaxRangeScaleMoving = 1.3f;
 
 	// Highest learned range multiplier for patterns that attack in place
 	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "1.0"))
@@ -335,7 +334,9 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void FinishAttackPattern();
 
-	void CloseWait();
+	void StartReactionCooldown();
+
+	void CloseWait(bool bCutShort = false);
 
 	void CloseReactionAttempt(bool bHit);
 

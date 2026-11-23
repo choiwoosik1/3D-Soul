@@ -86,6 +86,15 @@ struct FPlayerActionRecord
 	UPROPERTY(VisibleAnywhere)
 	FPlayerBehaviorStats Behavior;
 
+	// Whether the target was attacking at the previous decision; a punish is rolled only when an attack begins
+	bool bTargetWasAttacking = false;
+
+	// Whether the target was attacking at the previous swing observation; detects attacks begun during a pattern
+	bool bTargetAttackingInPattern = false;
+
+	// Whether the target was rolling at the previous decision; a roll catch is rolled only when a roll begins
+	bool bTargetWasRolling = false;
+
 	// Attack pattern currently running
 	FPatternRun Run;
 
@@ -94,12 +103,6 @@ struct FPlayerActionRecord
 
 	// Wait currently in progress
 	FWaitObservation Wait;
-
-	// Whether the target was attacking at the previous decision; a punish is rolled only when an attack begins
-	bool bTargetWasAttacking = false;
-
-	// Whether the target was rolling at the previous decision; a roll catch is rolled only when a roll begins
-	bool bTargetWasRolling = false;
 
 	// Why the attack being executed was started, if it is a reaction to the target
 	EReactionAttack ReactionAttack = EReactionAttack::None;
