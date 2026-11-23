@@ -57,6 +57,26 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "TargetLock")
 	float TargetLockRotationInterpSpeed;
 
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Camera")
+	float MinLockPitch = -40.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Camera")
+	float MaxLockPitch = 10.f;
+
+	// Under this flat distance the camera pitch is blended toward ClosePitch
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Camera")
+	float LockCloseDistance = 400.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Camera")
+	float ClosePitch = -10.f;
+
+	// Camera arm length while the target is very close
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Camera")
+	float ClosePullBackLength = 320.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Camera")
+	float ArmLengthInterpSpeed = 6.f;
+
 	UPROPERTY(EditDefaultsOnly, Category = "TargetLock")
 	float MaxTargetLockDistance = 2500.f;
 
@@ -108,6 +128,8 @@ private:
 
 	UPROPERTY()
 	AActor* CurrentLockedActor;
+
+	float DefaultArmLength = 0.f;
 
 	UPROPERTY()
 	UKwangWidgetBase* DrawnTargetLockWidget;
