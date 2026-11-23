@@ -15,15 +15,13 @@ namespace BehaviorStats
 	constexpr float HitPrior = 0.5f;
 	constexpr float GuardPrior = 0.25f;
 	constexpr float AggressionPrior = 0.5f;
-
-	// Share of finished patterns the player is assumed to hit back after
 	constexpr float PunishedPrior = 0.25f;
-
-	// Share of punish attempts assumed to land
 	constexpr float PunishHitPrior = 0.6f;
+	constexpr float RollHabitPrior = 0.4f;
+	constexpr float RollCatchHitPrior = 0.8f;
 
-	// Share of roll catches assumed to land
-	constexpr float RollCatchHitPrior = 0.5f;
+	// A hit or attack this soon after a pattern starts was already on its way, so it says nothing about the pattern
+	constexpr float PunishIgnoreTime = 0.4f;
 }
 
 // Result of one swing against the player
@@ -71,6 +69,11 @@ struct FWaitObservation
 
 	// Player attacked while the enemy was waiting
 	bool bAttackedFirst = false;
+
+	// Player rolled while the enemy was waiting
+	bool bRolled = false;
+
+	float StartTime = 0.f;
 
 	float EndTime = 0.f;
 };
@@ -218,6 +221,10 @@ struct FPlayerBehaviorStats
 	// How often an attack started as a punish landed its first swing
 	UPROPERTY(VisibleAnywhere)
 	FDecayedRate Punish;
+
+	// How often the player rolls while the enemy waits, without being attacked
+	UPROPERTY(VisibleAnywhere)
+	FDecayedRate RollHabit;
 
 	// How often an attack started as a roll catch landed its first swing
 	UPROPERTY(VisibleAnywhere)
