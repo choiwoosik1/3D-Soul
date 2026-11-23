@@ -133,7 +133,7 @@ void AKwangWeaponBase::ExecuteHitTrace()
 				{
 					if (GetInstigator() != HitPawn)
 					{
-						UE_LOG(LogTemp, Warning, TEXT("ExecuteHitTrace HitActor: %s"), *HitActor->GetName());
+						// UE_LOG(LogTemp, Warning, TEXT("ExecuteHitTrace HitActor: %s"), *HitActor->GetName());
 						OnWeaponHitTarget.ExecuteIfBound(HitActor);
 					}
 				}

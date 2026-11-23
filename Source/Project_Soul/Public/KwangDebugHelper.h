@@ -1,5 +1,8 @@
 #pragma once
 
+// 1 = show debug prints, 0 = hide all (set 0 for exhibition build)
+#define KWANG_DEBUG_PRINT 0
+
 // Debug라는 NameSpace를 통해 다른 함수와 충돌을 방지
 namespace Debug 
 {
@@ -8,7 +11,7 @@ namespace Debug
 	{
 		// GEninge : 언리얼 엔진의 코어 시스템을 가리키는 전역 포인터
 		// 엔진이 정상적으로 로드되었는지 확인하는 안정장치
-		if (GEngine)
+		if (KWANG_DEBUG_PRINT && GEngine)
 		{
 			// 게임 화면 좌측 상단에 텍스트를 출력하는 함수
 			// InKey(-1: 매번 새 줄에 출력, 양수 : 해당 키 값의 줄을 덮어쓰기), 7.f(화면에 7초동안 머뭄), 색상, 메세지
@@ -23,7 +26,7 @@ namespace Debug
 
 	static void Print(const FString& FloatTitle, float FloatValueToPrint, int32 InKey = -1, const FColor& Color = FColor::MakeRandomColor())
 	{
-		if (GEngine)
+		if (KWANG_DEBUG_PRINT && GEngine)
 		{
 			const FString FinalMsg = FloatTitle + TEXT(": ") + FString::SanitizeFloat(FloatValueToPrint);
 			GEngine->AddOnScreenDebugMessage(InKey, 7.f, Color, FinalMsg);

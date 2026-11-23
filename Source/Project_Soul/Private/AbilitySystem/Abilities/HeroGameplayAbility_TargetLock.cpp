@@ -14,11 +14,20 @@
 #include "KwangGameplayTags.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Enemy/Enemy.h"
+#include "GameFramework/SpringArmComponent.h"
 
 #include "KwangDebugHelper.h"
 
 void UHeroGameplayAbility_TargetLock::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
+	if (AKwangHeroCharacters* Hero = GetHeroCharacterFromActorInfo())
+	{
+		if (USpringArmComponent* Boom = Hero->GetCameraBoom())
+		{
+			DefaultArmLength = Boom->TargetArmLength;
+		}
+	}
+
 	TryLockOnTarget();
 
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
@@ -79,7 +88,23 @@ void UHeroGameplayAbility_TargetLock::OnTargetLockTick(float DeltaTime)
 		FVector TargetLocation = CurrentLockedActor->GetActorLocation() + FVector(0.f, 0.f, 80.f);
 		FVector StartLocation = GetHeroCharacterFromActorInfo()->GetActorLocation() + FVector(0.f, 0.f, 50.f);
 
-		const FRotator LookAtRot = UKismetMathLibrary::FindLookAtRotation(StartLocation, TargetLocation);
+		FRotator LookAtRot = UKismetMathLibrary::FindLookAtRotation(StartLocation, TargetLocation);
+
+		// Close range: pull the pitch toward ClosePitch so the camera does not tilt up
+		const float FlatDistance = FVector::Dist2D(StartLocation, TargetLocation);
+		const float CloseAlpha = FMath::Clamp(1.f - (FlatDistance / LockCloseDistance), 0.f, 1.f);
+
+		// Close range: pull the pitch toward ClosePitch so the camera does not tilt up
+		LookAtRot.Pitch = FMath::Lerp(LookAtRot.Pitch, ClosePitch, CloseAlpha);
+		LookAtRot.Pitch = FMath::Clamp(LookAtRot.Pitch, MinLockPitch, MaxLockPitch);
+
+		// Close range: move the camera back to see the target
+		if (USpringArmComponent* Boom = GetHeroCharacterFromActorInfo()->GetCameraBoom())
+		{
+			const float GoalLength = FMath::Lerp(DefaultArmLength, ClosePullBackLength, CloseAlpha);
+			Boom->TargetArmLength = FMath::FInterpTo(Boom->TargetArmLength, GoalLength, DeltaTime, ArmLengthInterpSpeed);
+		}
+
 		const FRotator CurrentControlRot = GetHeroControllerFromActorInfo()->GetControlRotation();
 		const FRotator TargetRot = FMath::RInterpTo(CurrentControlRot, LookAtRot, DeltaTime, TargetLockRotationInterpSpeed);
 
@@ -161,8 +186,8 @@ AActor* UHeroGameplayAbility_TargetLock::GetBestTargetFromAvailableActors(const 
 	{
 		const float Score = CalculateThreatScore(Candidate);
 
-		UE_LOG(LogTemp, Verbose, TEXT("[Threat] %s score = %.2f"),
-			Candidate ? *Candidate->GetName() : TEXT("null"), Score);
+		//UE_LOG(LogTemp, Verbose, TEXT("[Threat] %s score = %.2f"),
+			//Candidate ? *Candidate->GetName() : TEXT("null"), Score);
 
 		// Excluded candidates return -1, so they never beat BestScore
 		if (Score > BestScore)
@@ -290,6 +315,17 @@ void UHeroGameplayAbility_TargetLock::CleanUp()
 
 	RetargetTimer = 0.f;
 	RetargetCooldownRemaining = 0.f;
+
+	if (AKwangHeroCharacters* HeroForCamera = GetHeroCharacterFromActorInfo())
+	{
+		if (USpringArmComponent* Boom = HeroForCamera->GetCameraBoom())
+		{
+			if (DefaultArmLength > 0.f)
+			{
+				Boom->TargetArmLength = DefaultArmLength;
+			}
+		}
+	}
 
 	CurrentLockedActor = nullptr;
 
