@@ -835,6 +835,65 @@ AActor* AKwangHeroCharacters::GetPriorityAttackTarget(float SearchRadius, float 
 	return FindThreatTarget(SearchRadius, MaxAngle);
 }
 
+bool AKwangHeroCharacters::AddPotion(int32 SlotIndex, int32 Amount)
+{
+	if (SlotIndex < 0 || SlotIndex > 1 || Amount <= 0)
+	{
+		return false;
+	}
+	if (PotionCounts[SlotIndex] >= MaxPotionCount)
+	{
+		return false;
+	}
+	PotionCounts[SlotIndex] = FMath::Min(PotionCounts[SlotIndex] + Amount, MaxPotionCount);
+	return true;
+}
+
+int32 AKwangHeroCharacters::GetPotionCount(int32 SlotIndex) const
+{
+	return (SlotIndex >= 0 && SlotIndex <= 1) ? PotionCounts[SlotIndex] : 0;
+}
+
+bool AKwangHeroCharacters::UsePotion(int32 SlotIndex)
+{
+	if (SlotIndex < 0 || SlotIndex > 1 || PotionCounts[SlotIndex] <= 0)
+	{
+		return false;
+	}
+	if (UKwangFunctionLibrary::NativeDoesActorHaveTag(this, KwangGameplayTags::Shared_Status_Dead))
+	{
+		return false;
+	}
+
+	UKwangAbilitySystemComponent* ASC = UKwangFunctionLibrary::NativeGetKwangASCFromActor(this);
+	if (!ASC)
+	{
+		return false;
+	}
+
+	const TSubclassOf<UGameplayEffect> EffectClass = (SlotIndex == 0) ? HealthPotionEffectClass : ManaPotionEffectClass;
+	if (!EffectClass)
+	{
+		return false;
+	}
+
+	// Already full: do not drink, the potion stays in the slot
+	const FGameplayAttribute CurrentAttr = (SlotIndex == 0)
+		? UKwangAttributeSet::GetCurrentHealthAttribute() : UKwangAttributeSet::GetCurrentManaAttribute();
+	const FGameplayAttribute MaxAttr = (SlotIndex == 0)
+		? UKwangAttributeSet::GetMaxHealthAttribute() : UKwangAttributeSet::GetMaxManaAttribute();
+
+	if (ASC->GetNumericAttribute(CurrentAttr) >= ASC->GetNumericAttribute(MaxAttr) - KINDA_SMALL_NUMBER)
+	{
+		return false;
+	}
+
+	ASC->ApplyGameplayEffectToSelf(EffectClass->GetDefaultObject<UGameplayEffect>(), 1.f, ASC->MakeEffectContext());
+
+	--PotionCounts[SlotIndex];
+	return true;
+}
+
 //void AKwangHeroCharacters::PossessedBy(AController* NewController)
 //{
 //	 1. 부모 클래스의 기본 빙의 로직을 먼저 실행해서 뼈대 세팅

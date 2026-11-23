@@ -172,6 +172,28 @@ public:
 	FORCEINLINE UHeroCombatComponent* GetHeroCombatComponent() const { return HeroCombatComponent; }
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 
+	// ---- Potion slots: 0 = health, 1 = mana ----
+	// Returns false when the slot is already full (the pickup should then stay in the world)
+	UFUNCTION(BlueprintCallable, Category = "Item")
+	bool AddPotion(int32 SlotIndex, int32 Amount = 1);
+
+	// Returns false when empty, dead or no ability system
+	UFUNCTION(BlueprintCallable, Category = "Item")
+	bool UsePotion(int32 SlotIndex);
+
+	UFUNCTION(BlueprintPure, Category = "Item")
+	int32 GetPotionCount(int32 SlotIndex) const;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
+	int32 MaxPotionCount = 10;
+
+	// Set in BP_HeroCharacters class defaults (same GEs that DT_Items uses)
+	UPROPERTY(EditDefaultsOnly, Category = "Item")
+	TSubclassOf<UGameplayEffect> HealthPotionEffectClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Item")
+	TSubclassOf<UGameplayEffect> ManaPotionEffectClass;
+
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
 		AController* EventInstigator, AActor* DamageCauser) override;
 
@@ -298,6 +320,8 @@ private:
 	void NotifyAbilityNoise(const FGameplayTag& InInputTag);
 
 	float FootstepTimer = 0.f;
+
+	int32 PotionCounts[2] = { 0, 0 };
 };
 #pragma endregion
 
