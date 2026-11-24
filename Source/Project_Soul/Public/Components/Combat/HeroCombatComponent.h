@@ -7,6 +7,8 @@
 #include "HeroCombatComponent.generated.h"
 
 class AKwangHeroWeapon;
+class UParticleSystem;
+class USoundBase;
 /**
  * 
  */
@@ -27,4 +29,11 @@ public:
 
 	virtual void OnHitTargetActor(AActor* HitActor) override;
 	virtual void OnWeaponPulledFromTargetActor(AActor* InteractedActor) override;
+	// Impact effect spawned at the hit target on every melee hit (set in the Blueprint)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hit FX")
+	TObjectPtr<UParticleSystem> HitImpactFX;
+
+	// Impact sound played at the hit target on every melee hit (set in the Blueprint)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hit FX")
+	TObjectPtr<USoundBase> HitImpactSound;
 };

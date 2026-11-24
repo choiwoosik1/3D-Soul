@@ -7,6 +7,9 @@
 #include "KwangGameplayTags.h"
 #include"KwangDebugHelper.h"
 #include "Enemy/Enemy.h"
+#include "Kismet/GameplayStatics.h"
+#include "Particles/ParticleSystem.h"
+#include "Sound/SoundBase.h"
 
 AKwangHeroWeapon* UHeroCombatComponent::GetHeroCarriedWeaponByTag(FGameplayTag InWeaponTag) const
 {
@@ -51,6 +54,19 @@ void UHeroCombatComponent::OnHitTargetActor(AActor* HitActor)
 		{
 			Enemy->GetCriticalHit(GetOwningPawn());
 		}
+	}
+
+	// Impact effect at the hit target, nudged toward the attacker so it is not buried inside the body
+	if (HitImpactFX && GetOwningPawn())
+	{
+		const FVector ToOwner = (GetOwningPawn()->GetActorLocation() - HitActor->GetActorLocation()).GetSafeNormal2D();
+		const FVector SpawnLocation = HitActor->GetActorLocation() + ToOwner * 40.f + FVector(0.f, 0.f, 30.f);
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitImpactFX, SpawnLocation, ToOwner.Rotation());
+	}
+
+	if (HitImpactSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, HitImpactSound, HitActor->GetActorLocation());
 	}
 
 	FGameplayEventData Data;
