@@ -187,13 +187,6 @@ void AEnemy::EnterCombat()
     }
 }
 
-// Handle resuming combat state after stagger or groggy states
-void AEnemy::ResumeCombat()
-{
-    SetCharacterState(EEnemyState::InCombat);
-    bCriticalHit = false;
-}
-
 // Handle entering stagger state
 void AEnemy::EnterStagger()
 {
@@ -216,14 +209,15 @@ void AEnemy::ExitStagger()
 }
 
 // Handle entering groggy state, providing player opportunity
-void AEnemy::EnterGroggy()
+void AEnemy::EnterGroggy(float StartTime)
 {
     SetCharacterState(EEnemyState::Groggy);
     InterruptCurrentAttack();
 
-    if (GroggyMontage)
+    UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+    if (AnimInstance && GroggyMontage)
     {
-        PlayAnimMontage(GroggyMontage);
+        AnimInstance->Montage_Play(GroggyMontage, 1.f, EMontagePlayReturnType::MontageLength, StartTime);
     }
 }
 
@@ -238,6 +232,13 @@ void AEnemy::ExitGroggy()
     LimitPoise = MaxPoise;
     CurrentPoise = LimitPoise;
     ResumeCombat();
+}
+
+// Handle resuming combat state after stagger or groggy states
+void AEnemy::ResumeCombat()
+{
+    SetCharacterState(EEnemyState::InCombat);
+    bCriticalHit = false;
 }
 
 // Handle being backstabbed, applying backstab multiplier
@@ -281,19 +282,68 @@ void AEnemy::GetCriticalHit(AActor* Attacker)
 // Handle being parried, entering groggy state and resetting poise
 void AEnemy::GetParried(AActor* Attacker)
 {
+    UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+    UAnimMontage* AttackMontage = AnimInstance ? AnimInstance->GetCurrentActiveMontage() : nullptr;
+
     SetCharacterState(EEnemyState::Groggy);
-    CurrentPoise = 0.f;
-    AttackInitiator = Attacker;
+    InterruptCurrentAttack();
 
     // Rotate to align with the attacker
     FVector Direction = Attacker->GetActorLocation() - GetActorLocation();
     Direction.Z = 0.f;
     SetActorRotation(Direction.Rotation());
 
-    if (ParriedMontage)
+    if (!AttackMontage || !AnimInstance->Montage_IsPlaying(AttackMontage) || ParryRewindRate <= 0.f)
     {
-        PlayAnimMontage(ParriedMontage);
+        EnterGroggy();
+        return;
     }
+
+    bIsRewinding = true;
+
+    // Freeze playback; the rewind is driven manually by UpdateParryRewind
+    AnimInstance->Montage_SetPlayRate(AttackMontage, 0.f);
+    GetWorldTimerManager().SetTimerForNextTick(this, &AEnemy::UpdateParryRewind);
+
+    // Actual playback speed is PlayRate * RateScale
+    const float RewindSpeed = ParryRewindRate * AttackMontage->RateScale;
+    const float RewindDuration = AnimInstance->Montage_GetPosition(AttackMontage) / RewindSpeed;
+
+    // Start groggy before the attack montage auto blends out at its start
+    const float MaxDelay = RewindDuration - AttackMontage->BlendOut.GetBlendTime();
+    const float GroggyDelay = FMath::Min(ParryGroggyDelay, MaxDelay);
+
+    // A timer time of 0 clears the timer, so keep a small minimum
+    GetWorldTimerManager().SetTimer(ParryRewindTimerHandle, this, &AEnemy::FinishParryRewind,
+        FMath::Max(GroggyDelay, 0.01f), false);
+}
+
+// Scrub the attack montage backward each frame; SetPosition does not trigger notifies
+void AEnemy::UpdateParryRewind()
+{
+    if (!bIsRewinding)
+    {
+        return;
+    }
+
+    UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+    UAnimMontage* AttackMontage = AnimInstance ? AnimInstance->GetCurrentActiveMontage() : nullptr;
+    if (!AttackMontage)
+    {
+        return;
+    }
+
+    const float NewPosition = AnimInstance->Montage_GetPosition(AttackMontage)
+        - GetWorld()->GetDeltaSeconds() * ParryRewindRate * AttackMontage->RateScale;
+    AnimInstance->Montage_SetPosition(AttackMontage, FMath::Max(NewPosition, 0.f));
+
+    GetWorldTimerManager().SetTimerForNextTick(this, &AEnemy::UpdateParryRewind);
+}
+
+// Stop advancing the rewinding attack montage and blend into groggy
+void AEnemy::FinishParryRewind()
+{
+    EnterGroggy(ParryGroggyStartTime);
 }
 
 // Handle incoming damage, update health and poise,
@@ -815,7 +865,7 @@ void AEnemy::ObserveSwing()
 // Enable rotation during an attack, adjusting rotation speed based on the attack properties
 void AEnemy::EnableAttackRotation()
 {
-    if (!Patterns.IsValidIndex(PatternIdx) || !Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
+    if (bIsRewinding || !Patterns.IsValidIndex(PatternIdx) || !Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
     const FAttackProperties& Attack = Patterns[PatternIdx].Attacks[AttackIdx];
 
 	AAIController* AIC = Cast<AAIController>(GetController());
@@ -838,7 +888,7 @@ void AEnemy::DisableAttackRotation()
 // Enable movement during an attack, aiming at the target position corrected by the learned dodge offset
 void AEnemy::EnableAttackMovement()
 {
-    if (!Patterns.IsValidIndex(PatternIdx) || !Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
+    if (bIsRewinding || !Patterns.IsValidIndex(PatternIdx) || !Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
     const FAttackProperties& Attack = Patterns[PatternIdx].Attacks[AttackIdx];
 
     if (Attack.MovementSpeed <= 0.f) return;
@@ -918,9 +968,17 @@ void AEnemy::DisableAttackMovement()
     GetCharacterMovement()->MaxWalkSpeed = 0.f;
 }
 
+void AEnemy::SetParriable(bool bIsParriable)
+{
+    bCanBeParried = bIsParriable;
+    if (bAutoParry && bCanBeParried) GetParried(UGameplayStatics::GetPlayerPawn(this, 0));
+}
+
 // Enable the weapon hitbox for the current attack
 void AEnemy::EnableWeaponHitbox()
 {
+    if (bIsRewinding) return;
+
     // A wait that ended with this attack was kept open through the windup; it ends here
     CloseWait();
 
@@ -1084,6 +1142,10 @@ int32 AEnemy::RecordSample(const FAttackSample& Sample)
 // Interrupt the current attack, disable the weapon hitbox, and prevent parrying
 void AEnemy::InterruptCurrentAttack()
 {
+    // Cancel any pending parry rewind
+    GetWorldTimerManager().ClearTimer(ParryRewindTimerHandle);
+    bIsRewinding = false;
+
     // Discard the pending dodge sample so an interrupted attack is never learned as a dodge
     PlayerActionRecord.PendingDodgeSample.bActive = false;
     PlayerActionRecord.PrevDodgeBucket = INDEX_NONE;

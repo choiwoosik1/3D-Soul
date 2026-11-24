@@ -23,9 +23,14 @@ enum class EEnemyState : uint8
 UENUM(BlueprintType)
 enum class EGuardResponse : uint8
 {
-    Block,       // Guard negates damage, consumes partial stamina
-    GuardBreak,  // Guard negates damage but stamina drops to 0 and guard breaks
-	Ignore       // Guard does not block the attack, player takes full damage
+	// Guard negates damage, consumes partial stamina
+    Block,
+
+	// Guard negates damage but stamina drops to 0 and guard breaks
+    GuardBreak,
+
+	// Guard does not block the attack, player takes full damage
+	Ignore
 };
 
 // Structure to define properties of an individual attack
