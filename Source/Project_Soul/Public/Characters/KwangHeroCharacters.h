@@ -127,6 +127,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat|Threat")
 	AActor* AimAssistToThreatTarget(float SearchRadius, float MaxAngle);
 
+	// Turns the character toward the camera yaw at a limited speed for a short time (ranged attacks)
+	UFUNCTION(BlueprintCallable, Category = "Combat|Aim")
+	void FaceControlRotation(float TurnSpeed = 360.f, float Duration = 0.5f);
+
 	// Called by the target lock ability (nullptr when the lock ends)
 	void SetLockedTarget(AActor* NewTarget) { LockedTarget = NewTarget; }
 
@@ -136,6 +140,12 @@ public:
 	// Locked target first (any distance), otherwise the best threat target in the camera cone
 	UFUNCTION(BlueprintCallable, Category = "Combat|Threat")
 	AActor* GetPriorityAttackTarget(float SearchRadius, float MaxAngle) const;
+
+	// Crosshair aim for ranged attacks. Locked target first, otherwise a trace from the camera
+	// through the screen center. Returns the enemy under the crosshair (nullptr if none)
+	// and the world point the projectile should fly to.
+	UFUNCTION(BlueprintCallable, Category = "Combat|Aim")
+	AActor* GetCrosshairAimTarget(float MaxDistance, float TraceRadius, FVector& OutAimPoint) const;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Threat")
 	float DistanceWeight = 1.0f;
@@ -166,11 +176,41 @@ private:
 	TWeakObjectPtr<AActor> AimAssistTarget;
 	float AimAssistTimeRemaining = 0.f;
 
+	void UpdateFaceControlRotation(float DeltaTime);
+	float FaceControlTimeRemaining = 0.f;
+	float FaceControlTurnSpeed = 360.f;
+
 	TWeakObjectPtr<AActor> LockedTarget;
 
 public:
 	FORCEINLINE UHeroCombatComponent* GetHeroCombatComponent() const { return HeroCombatComponent; }
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
+
+	// ---- Potion slots: 0 = health, 1 = mana ----
+	// Returns false when the slot is already full (the pickup should then stay in the world)
+	UFUNCTION(BlueprintCallable, Category = "Item")
+	bool AddPotion(int32 SlotIndex, int32 Amount = 1);
+
+	// Returns false when empty, dead or no ability system
+	UFUNCTION(BlueprintCallable, Category = "Item")
+	bool UsePotion(int32 SlotIndex);
+
+	UFUNCTION(BlueprintPure, Category = "Item")
+	int32 GetPotionCount(int32 SlotIndex) const;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
+	int32 MaxPotionCount = 10;
+
+	// Column of CT_HeroStats used for the start-up stats (1 = Warrior, 2 = Archer, 3 = Shaman)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stats")
+	int32 StartUpLevel = 1;
+
+	// Set in BP_HeroCharacters class defaults (same GEs that DT_Items uses)
+	UPROPERTY(EditDefaultsOnly, Category = "Item")
+	TSubclassOf<UGameplayEffect> HealthPotionEffectClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Item")
+	TSubclassOf<UGameplayEffect> ManaPotionEffectClass;
 
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
 		AController* EventInstigator, AActor* DamageCauser) override;
@@ -298,6 +338,8 @@ private:
 	void NotifyAbilityNoise(const FGameplayTag& InInputTag);
 
 	float FootstepTimer = 0.f;
+
+	int32 PotionCounts[2] = { 0, 0 };
 };
 #pragma endregion
 

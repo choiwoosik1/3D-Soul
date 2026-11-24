@@ -17,7 +17,6 @@ public class Project_Soul : ModuleRules
             "GameplayTags",
 			"GameplayTasks",
 			"InputCore",
-			"Kismet",
             "MotionWarping",
 			"NavigationSystem",
 			"Slate",

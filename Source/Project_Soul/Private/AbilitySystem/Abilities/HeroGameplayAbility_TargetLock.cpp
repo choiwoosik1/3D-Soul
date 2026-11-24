@@ -15,6 +15,8 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Enemy/Enemy.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "GameFramework/Character.h"
+#include "Components/CapsuleComponent.h"
 
 #include "KwangDebugHelper.h"
 
@@ -71,6 +73,25 @@ void UHeroGameplayAbility_TargetLock::OnTargetLockTick(float DeltaTime)
 	{
 		CancelTargetLockAbility();
 		return;
+	}
+
+	// Drop the lock when the target stays hidden behind a wall
+	if (HasLineOfSightTo(CurrentLockedActor))
+	{
+		LostSightTimer = 0.f;
+	}
+	else
+	{
+		LostSightTimer += DeltaTime;
+		if (LostSightTimer >= LoseSightTime)
+		{
+			LostSightTimer = 0.f;
+			if (!TrySwitchToNextTarget())
+			{
+				CancelTargetLockAbility();
+				return;
+			}
+		}
 	}
 
 	SetTargetLockWidgetPosition();
@@ -167,7 +188,7 @@ void UHeroGameplayAbility_TargetLock::GetAvaillableActorsToLock()
 	{
 		if (AActor* HitActor = TraceHit.GetActor())
 		{
-			if (HitActor != GetHeroCharacterFromActorInfo())
+			if (HitActor != GetHeroCharacterFromActorInfo() && HasLineOfSightTo(HitActor))
 			{
 				AvailableActorsToLock.AddUnique(HitActor);
 
@@ -314,6 +335,7 @@ void UHeroGameplayAbility_TargetLock::CleanUp()
 	AvailableActorsToLock.Empty();
 
 	RetargetTimer = 0.f;
+	LostSightTimer = 0.f;
 	RetargetCooldownRemaining = 0.f;
 
 	if (AKwangHeroCharacters* HeroForCamera = GetHeroCharacterFromActorInfo())
@@ -419,7 +441,10 @@ void UHeroGameplayAbility_TargetLock::GetNearbyActorsToLock()
 
 	for (AActor* Found : OverlappedActors)       // 찾은 액터를 하나씩 순회
 	{
-		AvailableActorsToLock.AddUnique(Found);  // 락온 후보 목록에 중복 없이 추가
+		if (HasLineOfSightTo(Found))
+		{
+			AvailableActorsToLock.AddUnique(Found);
+		}
 	}
 }
 
@@ -442,4 +467,52 @@ bool UHeroGameplayAbility_TargetLock::TrySwitchToNextTarget()
 	RetargetCooldownRemaining = RetargetCooldown; // 쿨다운을 새로 걸어서, 전환 직후 다시 바뀌는 걸 막음
 
 	return true;                     // "교체 성공"
+}
+
+bool UHeroGameplayAbility_TargetLock::HasLineOfSightTo(const AActor* Target)
+{
+	AKwangHeroCharacters* Hero = GetHeroCharacterFromActorInfo();
+	if (!Hero || !Target)
+	{
+		return false;
+	}
+
+	// Aim at the head: capsule center + 80% of the capsule half height (scales with big enemies)
+	auto GetHeadLocation = [](const AActor* Actor)
+		{
+			FVector Location = Actor->GetActorLocation();
+			if (const ACharacter* Character = Cast<ACharacter>(Actor))
+			{
+				Location.Z += Character->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 0.8f;
+			}
+			return Location;
+		};
+
+	const FVector Start = GetHeadLocation(Hero);
+	const FVector End = GetHeadLocation(Target);
+
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(TargetLockLOS), false, Hero);
+	Params.AddIgnoredActor(Target);
+
+	TArray<AActor*> AttachedToHero;
+	Hero->GetAttachedActors(AttachedToHero);
+	Params.AddIgnoredActors(AttachedToHero);
+
+	// Other characters standing in between do not hide the target, so skip them and trace again
+	for (int32 i = 0; i < 4; ++i)
+	{
+		FHitResult Hit;
+		if (!Hero->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, LineOfSightChannel, Params))
+		{
+			return true;
+		}
+
+		if (const APawn* BlockingPawn = Cast<APawn>(Hit.GetActor()))
+		{
+			Params.AddIgnoredActor(BlockingPawn);
+			continue;
+		}
+		return false;
+	}
+	return true;
 }
