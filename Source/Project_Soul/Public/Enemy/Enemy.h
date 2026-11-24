@@ -41,6 +41,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Combat")
 	bool bCanBeParried = false;
 
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	bool bAutoParry = false;
+
 	UPROPERTY(VisibleAnywhere, Category = "Combat")
 	bool bCriticalHit = false;
 
@@ -251,10 +254,20 @@ protected:
 	UAnimMontage* CriticalHitMontage = nullptr;
 	
 	UPROPERTY(EditAnywhere, Category = "Animation")
-	UAnimMontage* ParriedMontage = nullptr;
+	UAnimMontage* DeathMontage = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Animation")
+	float ParryRewindRate = 1.5f;
 
 	UPROPERTY(EditAnywhere, Category = "Animation")
-	UAnimMontage* DeathMontage = nullptr;
+	float ParryGroggyDelay = 0.2f;
+
+	UPROPERTY(EditAnywhere, Category = "Animation")
+	float ParryGroggyStartTime = 0.4f;
+
+	bool bIsRewinding = false;
+
+	FTimerHandle ParryRewindTimerHandle;
 
 	FTransform InitialTransform;
 
@@ -271,6 +284,10 @@ protected:
 	void ExitGroggy();
 
 	virtual void ResumeCombat();
+
+	void UpdateParryRewind();
+
+	void FinishParryRewind();
 
 	void DisableInvincible() { bIsInvincible = false; }
 
@@ -317,7 +334,7 @@ protected:
 	void DisableAttackMovement();
 
 	UFUNCTION(BlueprintCallable)
-	void SetParryable(bool bIsParryable) { bCanBeParried = bIsParryable; }
+	void SetParriable(bool bIsParriable);//{ bCanBeParried = bIsParriable; }
 
 	UFUNCTION(BlueprintCallable)
 	virtual void EnableWeaponHitbox();
@@ -386,7 +403,7 @@ public:
 
 	void EnterStagger();
 
-	void EnterGroggy();
+	void EnterGroggy(float StartTime = 0.f);
 
 	void GetBackstabbed(AActor* Attacker);
 
