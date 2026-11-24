@@ -117,7 +117,7 @@ void AKwangHeroCharacters::PossessedBy(AController* NewController)
 	{
 		if (UDataAsset_StartUpDataBase* LoadedData = CharacterStartUpData.LoadSynchronous())
 		{
-			LoadedData->GiveToAbilitySystemComponent(KwangAbilitySystemComponent);
+			LoadedData->GiveToAbilitySystemComponent(KwangAbilitySystemComponent, StartUpLevel);
 		}
 	}
 }
@@ -295,6 +295,12 @@ float AKwangHeroCharacters::TakeDamage(float DamageAmount, FDamageEvent const& D
 					EventData.Target = this;
 					UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
 						this, KwangGameplayTags::Player_Event_Parry, EventData);
+
+					// Parry success: send the enemy into groggy so the player can counter
+					if (AEnemy* ParriedEnemy = Cast<AEnemy>(DamageCauser))
+					{
+						ParriedEnemy->GetParried(this);
+					}
 
 					// 임시 디버그
 					Debug::Print(TEXT("Block Success!"), FColor::Green);
@@ -535,7 +541,7 @@ void AKwangHeroCharacters::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	const bool bIsCurrentlyBlocking = IsBlocking();
-	GetCharacterMovement()->bOrientRotationToMovement = !bIsCurrentlyBlocking && AimAssistTimeRemaining <= 0.f;
+	GetCharacterMovement()->bOrientRotationToMovement = !bIsCurrentlyBlocking && AimAssistTimeRemaining <= 0.f && FaceControlTimeRemaining <= 0.f;
 
 	if (bIsCurrentlyBlocking)
 	{
@@ -543,6 +549,8 @@ void AKwangHeroCharacters::Tick(float DeltaTime)
 	}
 
 	UpdateAimAssist(DeltaTime);
+
+	UpdateFaceControlRotation(DeltaTime);
 
 	UpdateFootstepNoise(DeltaTime);
 }
@@ -822,6 +830,34 @@ void AKwangHeroCharacters::UpdateAimAssist(float DeltaTime)
 	SetActorRotation(FRotator(0.f, NewYaw, 0.f));
 }
 
+void AKwangHeroCharacters::FaceControlRotation(float TurnSpeed, float Duration)
+{
+	FaceControlTurnSpeed = TurnSpeed;
+	FaceControlTimeRemaining = Duration;
+}
+
+void AKwangHeroCharacters::UpdateFaceControlRotation(float DeltaTime)
+{
+	if (FaceControlTimeRemaining <= 0.f)
+	{
+		return;
+	}
+
+	FaceControlTimeRemaining -= DeltaTime;
+
+	if (IsBlocking() || IsRolling() ||
+		UKwangFunctionLibrary::NativeDoesActorHaveTag(this, KwangGameplayTags::Player_Status_TargetLock))
+	{
+		FaceControlTimeRemaining = 0.f;
+		return;
+	}
+
+	// Turn toward the camera yaw at a limited speed (not a snap)
+	const float TargetYaw = GetControlRotation().Yaw;
+	const float NewYaw = FMath::FixedTurn(GetActorRotation().Yaw, TargetYaw, FaceControlTurnSpeed * DeltaTime);
+	SetActorRotation(FRotator(0.f, NewYaw, 0.f));
+}
+
 AActor* AKwangHeroCharacters::GetPriorityAttackTarget(float SearchRadius, float MaxAngle) const
 {
 	// 1) The enemy the player locked on to, at any distance, as long as it is alive
@@ -833,6 +869,53 @@ AActor* AKwangHeroCharacters::GetPriorityAttackTarget(float SearchRadius, float 
 
 	// 2) Otherwise the highest threat target around the player
 	return FindThreatTarget(SearchRadius, MaxAngle);
+}
+
+AActor* AKwangHeroCharacters::GetCrosshairAimTarget(float MaxDistance, float TraceRadius, FVector& OutAimPoint) const
+{
+	// 1) Locked target: aim straight at it
+	AActor* Locked = LockedTarget.Get();
+	if (Locked && CalculateThreatScore(Locked, 100000.f) >= 0.f)
+	{
+		OutAimPoint = Locked->GetActorLocation();
+		return Locked;
+	}
+
+	// 2) Trace from the camera through the screen center
+	FVector CameraLocation = GetPawnViewLocation();
+	FRotator CameraRotation = GetControlRotation();
+	if (const AController* PC = GetController())
+	{
+		PC->GetPlayerViewPoint(CameraLocation, CameraRotation);
+	}
+
+	const FVector Start = CameraLocation;
+	const FVector End = Start + CameraRotation.Vector() * MaxDistance;
+
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(CrosshairAim), false, this);
+	TArray<AActor*> AttachedToHero;
+	GetAttachedActors(AttachedToHero);
+	Params.AddIgnoredActors(AttachedToHero);
+
+	FHitResult Hit;
+	const bool bHit = GetWorld()->SweepSingleByChannel(
+		Hit, Start, End, FQuat::Identity, ECC_Visibility,
+		FCollisionShape::MakeSphere(TraceRadius), Params);
+
+	if (!bHit)
+	{
+		OutAimPoint = End;
+		return nullptr;
+	}
+
+	OutAimPoint = Hit.ImpactPoint;
+
+	AEnemy* HitEnemy = Cast<AEnemy>(Hit.GetActor());
+	if (HitEnemy && HitEnemy->GetCharacterState() != EEnemyState::Dead)
+	{
+		return HitEnemy;
+	}
+	return nullptr;
 }
 
 bool AKwangHeroCharacters::AddPotion(int32 SlotIndex, int32 Amount)

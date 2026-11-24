@@ -80,6 +80,19 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "TargetLock")
 	float MaxTargetLockDistance = 2500.f;
 
+	// ---- Line of sight ----
+	bool HasLineOfSightTo(const AActor* Target);
+
+	// Trace channel used to check whether a wall hides the target
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|LineOfSight")
+	TEnumAsByte<ECollisionChannel> LineOfSightChannel = ECC_Visibility;
+
+	// The lock is dropped after the target stays hidden behind an obstacle this long (seconds)
+	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|LineOfSight")
+	float LoseSightTime = 1.0f;
+
+	float LostSightTimer = 0.f;
+
 	// ---- Threat scoring weights (tunable in the GA Blueprint) ----
 	UPROPERTY(EditDefaultsOnly, Category = "TargetLock|Threat")
 	float DistanceWeight = 1.0f;

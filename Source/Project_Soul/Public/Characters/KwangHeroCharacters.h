@@ -127,6 +127,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat|Threat")
 	AActor* AimAssistToThreatTarget(float SearchRadius, float MaxAngle);
 
+	// Turns the character toward the camera yaw at a limited speed for a short time (ranged attacks)
+	UFUNCTION(BlueprintCallable, Category = "Combat|Aim")
+	void FaceControlRotation(float TurnSpeed = 360.f, float Duration = 0.5f);
+
 	// Called by the target lock ability (nullptr when the lock ends)
 	void SetLockedTarget(AActor* NewTarget) { LockedTarget = NewTarget; }
 
@@ -136,6 +140,12 @@ public:
 	// Locked target first (any distance), otherwise the best threat target in the camera cone
 	UFUNCTION(BlueprintCallable, Category = "Combat|Threat")
 	AActor* GetPriorityAttackTarget(float SearchRadius, float MaxAngle) const;
+
+	// Crosshair aim for ranged attacks. Locked target first, otherwise a trace from the camera
+	// through the screen center. Returns the enemy under the crosshair (nullptr if none)
+	// and the world point the projectile should fly to.
+	UFUNCTION(BlueprintCallable, Category = "Combat|Aim")
+	AActor* GetCrosshairAimTarget(float MaxDistance, float TraceRadius, FVector& OutAimPoint) const;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Threat")
 	float DistanceWeight = 1.0f;
@@ -166,6 +176,10 @@ private:
 	TWeakObjectPtr<AActor> AimAssistTarget;
 	float AimAssistTimeRemaining = 0.f;
 
+	void UpdateFaceControlRotation(float DeltaTime);
+	float FaceControlTimeRemaining = 0.f;
+	float FaceControlTurnSpeed = 360.f;
+
 	TWeakObjectPtr<AActor> LockedTarget;
 
 public:
@@ -186,6 +200,10 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
 	int32 MaxPotionCount = 10;
+
+	// Column of CT_HeroStats used for the start-up stats (1 = Warrior, 2 = Archer, 3 = Shaman)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stats")
+	int32 StartUpLevel = 1;
 
 	// Set in BP_HeroCharacters class defaults (same GEs that DT_Items uses)
 	UPROPERTY(EditDefaultsOnly, Category = "Item")
