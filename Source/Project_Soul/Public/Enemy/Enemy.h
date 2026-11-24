@@ -53,7 +53,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Combat")
 	bool bIsInvincible = false;
 
-	UPROPERTY(VisibleAnywhere, Category = "Combat")
 	AActor* AttackInitiator = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
@@ -65,8 +64,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Combat")
 	int32 AttackIdx = -1;
 
-	UPROPERTY(VisibleAnywhere, Category = "Combat")
 	TArray<AActor*> AlreadyHitActors;
+
+	bool bSwingInterrupted = false;
 
 	// Weapon properties
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
@@ -149,7 +149,13 @@ protected:
 	FPlayerActionRecord PlayerActionRecord;
 
 	UPROPERTY(EditAnywhere, Category = "AI")
-	bool bShowBehaviorDebug = false;
+	FBehaviorDebugSettings BehaviorDebug;
+
+	FTimerHandle DebugDrawTimerHandle;
+
+	int32 SharedReceived = 0;
+
+	float LastShareLineTime = -1.f;
 
 	// How strongly guard-beating patterns are favored against a player who guards a lot
 	UPROPERTY(EditAnywhere, Category = "AI", meta = (ClampMin = "0.0"))
@@ -285,6 +291,8 @@ protected:
 
 	virtual void ResumeCombat();
 
+	void RecordParried(const AActor* Attacker);
+
 	void UpdateParryRewind();
 
 	void FinishParryRewind();
@@ -303,13 +311,17 @@ protected:
 
 	bool StartReactionAttack(EReactionAttack Type, float Distance);
 
-	int32 PickPattern(float Distance, EReactionAttack Reaction = EReactionAttack::None) const;
+	int32 PickPattern(float Distance, EReactionAttack Reaction = EReactionAttack::None, float* OutChance = nullptr) const;
 
 	virtual float ScorePattern(int32 Idx) const;
 
 	virtual float GetWaitChance() const;
 
 	void DrawBehaviorDebug();
+
+	void DebugEvent(bool bEnabled, const FString& Text, const FColor& Color, float HeightOffset = 40.f, float Duration = 1.2f);
+
+	void DrawDodgeAimDebug(const FAttackSample& Sample);
 
 	void StartPendingCatch();
 
@@ -328,7 +340,8 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void EnableAttackMovement();
 
-	FVector ApplyAimOffset(const FVector& BaseLocation, const FVector& Forward, const FAttackProperties& Attack, int32 PrevBucket) const;
+	FVector ApplyAimOffset(const FVector& BaseLocation, const FVector& Forward, const FAttackProperties& Attack,
+		int32 PrevBucket, FAimPrediction* OutPrediction = nullptr) const;
 
 	UFUNCTION(BlueprintCallable)
 	void DisableAttackMovement();
@@ -383,7 +396,7 @@ public:
 
 	bool CanBeCriticalHit() const { return CharacterState == EEnemyState::Groggy && !bIsInvincible; }
 
-	bool CanBeParried() const { return bCanBeParried; }
+	bool CanBeParried() const;
 
 	float GetMinCombatRange() const { return MinCombatRange; }
 

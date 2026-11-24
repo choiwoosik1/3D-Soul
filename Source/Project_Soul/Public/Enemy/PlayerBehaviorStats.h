@@ -28,9 +28,10 @@ namespace BehaviorStats
 enum class EAttackOutcome : uint8
 {
 	Hit,
-	Dodged,     // Player rolled
+	Dodged,
 	Guarded,
-	OutRanged   // Swing never reached the player and the player did not roll
+	Parried,
+	OutRanged
 };
 
 inline const TCHAR* LexToString(EAttackOutcome Outcome)
@@ -40,6 +41,7 @@ inline const TCHAR* LexToString(EAttackOutcome Outcome)
 	case EAttackOutcome::Hit:       return TEXT("Hit");
 	case EAttackOutcome::Dodged:    return TEXT("Dodged");
 	case EAttackOutcome::Guarded:   return TEXT("Guarded");
+	case EAttackOutcome::Parried:   return TEXT("Parried");
 	default:                        return TEXT("OutRanged");
 	}
 }
@@ -166,6 +168,9 @@ struct FPatternOutcomeStats
 	float Guarded = 0.f;
 
 	UPROPERTY(VisibleAnywhere)
+	float Parried = 0.f;
+
+	UPROPERTY(VisibleAnywhere)
 	float OutRanged = 0.f;
 
 	// How often the player hit back right after this pattern ended
@@ -193,12 +198,13 @@ struct FPatternOutcomeStats
 		Hit = Hit * SampleDecay + (Outcome == EAttackOutcome::Hit ? Weight : 0.f);
 		Dodged = Dodged * SampleDecay + (Outcome == EAttackOutcome::Dodged ? Weight : 0.f);
 		Guarded = Guarded * SampleDecay + (Outcome == EAttackOutcome::Guarded ? Weight : 0.f);
+		Parried = Parried * SampleDecay + (Outcome == EAttackOutcome::Parried ? Weight : 0.f);
 		OutRanged = OutRanged * SampleDecay + (Outcome == EAttackOutcome::OutRanged ? Weight : 0.f);
 	}
 
 	float GetHitRate(float PriorRate) const
 	{
-		const float Total = Hit + Dodged + Guarded + OutRanged;
+		const float Total = Hit + Dodged + Guarded + OutRanged + Parried;
 		return (Hit + BehaviorStats::PriorWeight * PriorRate) / (Total + BehaviorStats::PriorWeight);
 	}
 };
