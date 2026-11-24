@@ -9,6 +9,33 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 
+namespace
+{
+    // Display name of a dodge bucket; INDEX_NONE means the first lunge of a combo
+    const TCHAR* DodgeBucketName(int32 Bucket)
+    {
+        static const TCHAR* Names[] = { TEXT("STAY"), TEXT("LEFT"), TEXT("RIGHT"), TEXT("AWAY"), TEXT("TOWARD") };
+        return FDodgeStats::IsValidBucket(Bucket) ? Names[Bucket] : TEXT("FIRST");
+    }
+
+    int32 Percent(float Rate)
+    {
+        return FMath::RoundToInt(Rate * 100.f);
+    }
+
+    // Decayed weight of each dodge direction, in bucket order
+    FString DodgeHabitText(const FDodgeStats& Stats)
+    {
+        FString Text = TEXT("Dodge");
+        for (int32 i = 0; i < FDodgeStats::BucketCount; i++)
+        {
+            const float Weight = Stats.Buckets.IsValidIndex(i) ? Stats.Buckets[i].Weight : 0.f;
+            Text += FString::Printf(TEXT("  %s %.1f"), DodgeBucketName(i), Weight);
+        }
+        return Text;
+    }
+}
+
 // Sets default values
 AEnemy::AEnemy()
 {
@@ -185,6 +212,12 @@ void AEnemy::EnterCombat()
     {
         PlayAnimMontage(CombatMontage);
     }
+
+    // Demo display: drawn on its own timer so it stays up during attacks, stagger and groggy
+    if (BehaviorDebug.IsAnyEnabled())
+    {
+        GetWorldTimerManager().SetTimer(DebugDrawTimerHandle, this, &AEnemy::DrawBehaviorDebug, 0.1f, true);
+    }
 }
 
 // Handle entering stagger state
@@ -282,16 +315,20 @@ void AEnemy::GetCriticalHit(AActor* Attacker)
 // Handle being parried, entering groggy state and resetting poise
 void AEnemy::GetParried(AActor* Attacker)
 {
-    UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-    UAnimMontage* AttackMontage = AnimInstance ? AnimInstance->GetCurrentActiveMontage() : nullptr;
+    if (!Attacker || !CanBeParried()) return;
 
-    SetCharacterState(EEnemyState::Groggy);
+    // Learn from the parry before InterruptCurrentAttack discards what was being observed
+    RecordParried(Attacker);
     InterruptCurrentAttack();
+    SetCharacterState(EEnemyState::Groggy);
 
     // Rotate to align with the attacker
     FVector Direction = Attacker->GetActorLocation() - GetActorLocation();
     Direction.Z = 0.f;
     SetActorRotation(Direction.Rotation());
+
+    UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+    UAnimMontage* AttackMontage = AnimInstance ? AnimInstance->GetCurrentActiveMontage() : nullptr;
 
     if (!AttackMontage || !AnimInstance->Montage_IsPlaying(AttackMontage) || ParryRewindRate <= 0.f)
     {
@@ -316,6 +353,46 @@ void AEnemy::GetParried(AActor* Attacker)
     // A timer time of 0 clears the timer, so keep a small minimum
     GetWorldTimerManager().SetTimer(ParryRewindTimerHandle, this, &AEnemy::FinishParryRewind,
         FMath::Max(GroggyDelay, 0.01f), false);
+}
+
+// The player parries at the moment a swing reaches them, so this only answers for the swing in progress
+bool AEnemy::CanBeParried() const
+{
+    if (CharacterState != EEnemyState::Attack) return false;
+    if (!Patterns.IsValidIndex(PatternIdx) || !Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return false;
+
+    const FAttackProperties& Attack = Patterns[PatternIdx].Attacks[AttackIdx];
+    return Attack.bCanBeParried && Attack.GuardResponse == EGuardResponse::Block
+        && RightWeaponHitbox->GetCollisionEnabled() != ECollisionEnabled::NoCollision;
+}
+
+// Learn from being parried before the attack is cut short.
+// The pattern failed, was answered with the strongest counterattack there is (groggy and a critical hit),
+// and the player defended with the guard input.
+void AEnemy::RecordParried(const AActor* Attacker)
+{
+    if (!Patterns.IsValidIndex(PatternIdx)) return;
+
+    const int32 Idx = PatternIdx;
+    ShareLearning([Idx](AEnemy& Enemy, float Weight)
+        {
+            Enemy.Patterns[Idx].OutcomeStats.Record(EAttackOutcome::Parried, Weight);
+            Enemy.PlayerActionRecord.Behavior.Guard.Record(true, Weight);
+        });
+
+    ClosePunishWatch(true);
+
+    // A parry within reach means the pattern was started close enough
+    if (Attacker && GetDistanceTo(Attacker) <= GetEffectiveRange(Idx))
+    {
+        PlayerActionRecord.Run.bReached = true;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("Parried P=%d W=%.2f Hit=%.0f%% Guard=%.0f%% Reached=%d"),
+        Idx, ScorePattern(Idx),
+        Patterns[Idx].OutcomeStats.GetHitRate(BehaviorStats::HitPrior) * 100.f,
+        PlayerActionRecord.Behavior.Guard.Get(BehaviorStats::GuardPrior) * 100.f,
+        PlayerActionRecord.Run.bReached);
 }
 
 // Scrub the attack montage backward each frame; SetPosition does not trigger notifies
@@ -442,7 +519,6 @@ void AEnemy::OnDecisionTimer()
     {
         DecideNextAction();
         StartDecisionTimer();
-        DrawBehaviorDebug();
     }
 }
 
@@ -492,13 +568,21 @@ void AEnemy::DecideNextAction()
     if (bRollStarted && Now >= NextRollCatchTime && FMath::FRand() < GetReactionChance(EReactionAttack::RollCatch))
     {
         const FVector Landing = Snapshot.Location + FVector(Snapshot.Velocity.X, Snapshot.Velocity.Y, 0.f) * RollLookAhead;
-        if (StartReactionAttack(EReactionAttack::RollCatch, FVector::Dist(GetActorLocation(), Landing))) return;
+        if (StartReactionAttack(EReactionAttack::RollCatch, FVector::Dist(GetActorLocation(), Landing)))
+        {
+            if (BehaviorDebug.bReaction)
+            {
+                DrawDebugSphere(GetWorld(), Landing, 40.f, 12, FColor::Cyan, false, 1.5f);
+            }
+            return;
+        }
     }
 
     // Leave a pause after the previous pattern
     if (Now - LastAttackEndTime < MinAttackGap) return;
 
-    const int32 SelectedIdx = PickPattern(Distance);
+    float SelectedChance = 0.f;
+    const int32 SelectedIdx = PickPattern(Distance, EReactionAttack::None, &SelectedChance);
 
     if (Wait.bActive)
     {
@@ -523,6 +607,7 @@ void AEnemy::DecideNextAction()
 
     if (SelectedIdx != INDEX_NONE)
     {
+        DebugEvent(BehaviorDebug.bDecision, FString::Printf(TEXT("SELECT P%d (%.0f%%)"), SelectedIdx, SelectedChance * 100.f), FColor::White);
         PerformAttackPattern(SelectedIdx);
     }
 }
@@ -570,8 +655,12 @@ bool AEnemy::StartReactionAttack(EReactionAttack Type, float Distance)
         }
     }
 
-    // UE_LOG(LogTemp, Warning, TEXT("Reaction %s P=%d Chance=%.2f Distance=%.0f Delay=%.2f"),
-    //    LexToString(Type), Idx, GetReactionChance(Type), Distance, FMath::Max(Delay, 0.f));
+    // UE_LOG(LogTemp, Warning, TEXT("Reaction %s P=%d Chance=%.2f Distance=%.0f Delay=%.2f"), 
+    //     LexToString(Type), Idx, GetReactionChance(Type), Distance, FMath::Max(Delay, 0.f));
+
+    const bool bCatch = Type == EReactionAttack::RollCatch;
+    DebugEvent(BehaviorDebug.bReaction, bCatch ? TEXT("ROLL CATCH!") : TEXT("PUNISH!"), 
+        bCatch ? FColor::Cyan : FColor::Orange, 60.f);
 
     if (Delay > 0.f)
     {
@@ -588,7 +677,7 @@ bool AEnemy::StartReactionAttack(EReactionAttack Type, float Distance)
 // Pick one attack pattern that can reach the target, with a chance proportional to its weight.
 // A normal decision weighs patterns by ScorePattern; a reaction keeps only the patterns that can arrive in time
 // and weighs them by how often each one has worked as that reaction. Returns INDEX_NONE when no pattern qualifies.
-int32 AEnemy::PickPattern(float Distance, EReactionAttack Reaction) const
+int32 AEnemy::PickPattern(float Distance, EReactionAttack Reaction, float* OutChance) const
 {
     // Fastest measured startup among all patterns; patterns never used yet have no measurement
     float FastestStartup = MAX_FLT;
@@ -653,6 +742,12 @@ int32 AEnemy::PickPattern(float Distance, EReactionAttack Reaction) const
         Roll -= Weights[i];
         if (Roll <= 0.f) break;
     }
+
+    if (OutChance)
+    {
+        *OutChance = Weights[SelectedIdx] / TotalWeight;
+    }
+
     return SelectedIdx;
 }
 
@@ -708,36 +803,206 @@ float AEnemy::GetWaitChance() const
     return BaseWaitChance * (1.f - Aggression) / (1.f - BehaviorStats::AggressionPrior);
 }
 
-// Show the learned statistics above the enemy until the next decision
+// Draw the parts of the behavior analysis chosen in BehaviorDebug above this enemy. Runs every 0.1 seconds.
 void AEnemy::DrawBehaviorDebug()
 {
-    if (!bShowBehaviorDebug) return;
-
-    const FPlayerBehaviorStats& Behavior = PlayerActionRecord.Behavior;
-    FString Text = FString::Printf(TEXT("Guard %.0f%%  Aggression %.0f%%  Roll %.0f%%  Wait %.0f%%  Punish %.0f%%  Catch %.0f%%  CombatRange %.0f%s"),
-        Behavior.Guard.Get(BehaviorStats::GuardPrior) * 100.f,
-        Behavior.Aggression.Get(BehaviorStats::AggressionPrior) * 100.f,
-        Behavior.RollHabit.Get(BehaviorStats::RollHabitPrior) * 100.f,
-        GetWaitChance() * 100.f,
-        GetReactionChance(EReactionAttack::Punish) * 100.f,
-        GetReactionChance(EReactionAttack::RollCatch) * 100.f,
-        GetMaxCombatRange(),
-        PlayerActionRecord.Wait.bActive ? TEXT("  [Waiting]") : TEXT(""));
-
-    for (int32 i = 0; i < Patterns.Num(); i++)
+    // Only enemies in a fight draw; the timer stops itself once the enemy leaves combat or dies
+    if (CharacterState == EEnemyState::Idle || CharacterState == EEnemyState::Patrol
+        || CharacterState == EEnemyState::Alert || CharacterState == EEnemyState::Dead)
     {
-        const FPatternOutcomeStats& Stats = Patterns[i].OutcomeStats;
-        Text += FString::Printf(TEXT("\nP%d  W%.2f  H%.1f D%.1f G%.1f O%.1f  Hit %.0f%%  Punished %.0f%%  PunishHit %.0f%%  CatchHit %.0f%%  Range %.0f (x%.2f)  Startup %.2fs"),
-            i, ScorePattern(i), Stats.Hit, Stats.Dodged, Stats.Guarded, Stats.OutRanged,
-            Stats.GetHitRate(BehaviorStats::HitPrior) * 100.f,
-            Stats.Punished.Get(BehaviorStats::PunishedPrior) * 100.f,
-            Stats.PunishHit.Get(BehaviorStats::PunishHitPrior) * 100.f,
-            Stats.CatchHit.Get(BehaviorStats::RollCatchHitPrior) * 100.f,
-            GetEffectiveRange(i), Stats.RangeScale, Stats.StartupTime);
+        GetWorldTimerManager().ClearTimer(DebugDrawTimerHandle);
+        return;
     }
 
-    const float Duration = GetWorldTimerManager().GetTimerRate(DecisionTimerHandle);
-    DrawDebugString(GetWorld(), FVector(0.f, 0.f, 150.f), Text, this, FColor::White, Duration, true);
+    // Slightly longer than the timer so the text does not flicker
+    constexpr float Lifetime = 0.11f;
+
+    const FBehaviorDebugSettings& Debug = BehaviorDebug;
+    const FPlayerBehaviorStats& Behavior = PlayerActionRecord.Behavior;
+    const float Now = GetWorld()->GetTimeSeconds();
+    TArray<FString> Lines;
+
+    if (Debug.bShare)
+    {
+        Lines.Add(FString::Printf(TEXT("Peers %d (x%.2f)  Received %d"), GetPeers().Num(), LearningShareRatio, SharedReceived));
+        Lines.Add(FString::Printf(TEXT("Guard %d%%  Roll %d%%  Aggression %d%%"),
+            Percent(Behavior.Guard.Get(BehaviorStats::GuardPrior)),
+            Percent(Behavior.RollHabit.Get(BehaviorStats::RollHabitPrior)),
+            Percent(Behavior.Aggression.Get(BehaviorStats::AggressionPrior))));
+    }
+
+    if (Debug.bDecision)
+    {
+        const FWaitObservation& Wait = PlayerActionRecord.Wait;
+        const FString Waiting = Wait.bActive ? FString::Printf(TEXT("   WAITING %.1fs"), FMath::Max(Wait.EndTime - Now, 0.f)) : FString();
+        Lines.Add(FString::Printf(TEXT("Guard %d%%  Aggression %d%%  Wait %d%%%s"),
+            Percent(Behavior.Guard.Get(BehaviorStats::GuardPrior)),
+            Percent(Behavior.Aggression.Get(BehaviorStats::AggressionPrior)),
+            Percent(GetWaitChance()), *Waiting));
+    }
+
+    if (Debug.bRange)
+    {
+        Lines.Add(FString::Printf(TEXT("CombatRange %.0f -> %.0f"), MaxCombatRange, GetMaxCombatRange()));
+    }
+
+    if (Debug.bReaction)
+    {
+        auto Cooldown = [Now](float NextTime)
+            {
+                return NextTime > Now ? FString::Printf(TEXT("CD %.1fs"), NextTime - Now) : FString(TEXT("Ready"));
+            };
+        const FString Pending = PendingCatchIdx != INDEX_NONE
+            ? FString::Printf(TEXT("   CATCH IN %.2fs"), GetWorldTimerManager().GetTimerRemaining(RollCatchTimerHandle))
+            : FString();
+        Lines.Add(FString::Printf(TEXT("Punish %d%% (%s)  Catch %d%% (%s)  RollHabit %d%%%s"),
+            Percent(GetReactionChance(EReactionAttack::Punish)), *Cooldown(NextPunishTime),
+            Percent(GetReactionChance(EReactionAttack::RollCatch)), *Cooldown(NextRollCatchTime),
+            Percent(Behavior.RollHabit.Get(BehaviorStats::RollHabitPrior)), *Pending));
+    }
+
+    if (Debug.bDodge || Debug.bShare)
+    {
+        Lines.Add(DodgeHabitText(PlayerActionRecord.DodgeFallback));
+    }
+
+    // One line per pattern, made of the parts that are enabled
+    if (Debug.bDecision || Debug.bRange || Debug.bReaction)
+    {
+        // Pick chance at the current distance, weighed the way a normal decision would
+        const AActor* Target = GetCombatTarget();
+        const float Distance = Target ? FVector::Dist(GetActorLocation(), Target->GetActorLocation()) : MAX_FLT;
+
+        TArray<float> Picks;
+        Picks.Init(0.f, Patterns.Num());
+        float PickTotal = 0.f;
+        float FastestStartup = MAX_FLT;
+        for (int32 i = 0; i < Patterns.Num(); i++)
+        {
+            if (Distance <= GetEffectiveRange(i))
+            {
+                Picks[i] = ScorePattern(i);
+                PickTotal += Picks[i];
+            }
+
+            const float Startup = Patterns[i].OutcomeStats.StartupTime;
+            if (Startup > 0.f)
+            {
+                FastestStartup = FMath::Min(FastestStartup, Startup);
+            }
+        }
+
+        for (int32 i = 0; i < Patterns.Num(); i++)
+        {
+            const FAttackPattern& Pattern = Patterns[i];
+            const FPatternOutcomeStats& Stats = Pattern.OutcomeStats;
+            FString Line = FString::Printf(TEXT("%s P%d"), i == PatternIdx ? TEXT(">") : TEXT("  "), i);
+            bool bShow = Debug.bDecision || Debug.bRange;
+
+            if (Debug.bDecision)
+            {
+                const bool bGuardBreak = Pattern.Attacks.ContainsByPredicate([](const FAttackProperties& Attack)
+                    {
+                        return Attack.GuardResponse == EGuardResponse::GuardBreak;
+                    });
+                const bool bIgnoreGuard = Pattern.Attacks.ContainsByPredicate([](const FAttackProperties& Attack)
+                    {
+                        return Attack.GuardResponse == EGuardResponse::Ignore;
+                    });
+                const FString Pick = Picks[i] > 0.f ? FString::Printf(TEXT("%d%%"), Percent(Picks[i] / PickTotal)) : FString(TEXT("-"));
+
+                // Share of judged swings that were parried (no prior: shows only what actually happened)
+                const float Judged = Stats.Hit + Stats.Dodged + Stats.Guarded + Stats.OutRanged + Stats.Parried;
+                const int32 ParriedShare = Judged > 0.f ? Percent(Stats.Parried / Judged) : 0;
+
+                Line += FString::Printf(TEXT("%s%s  Pick %s  W%.2f  Hit %d%%  Punished %d%%  Parried %d%%"),
+                    bGuardBreak ? TEXT(" [GB]") : TEXT(""), bIgnoreGuard ? TEXT(" [IGN]") : TEXT(""),
+                    *Pick, ScorePattern(i),
+                    Percent(Stats.GetHitRate(BehaviorStats::HitPrior)),
+                    Percent(Stats.Punished.Get(BehaviorStats::PunishedPrior)),
+                    ParriedShare);
+            }
+
+            if (Debug.bRange)
+            {
+                Line += FString::Printf(TEXT("  Range %.0f -> %.0f (x%.2f)"), Pattern.AttackRange, GetEffectiveRange(i), Stats.RangeScale);
+            }
+
+            if (Debug.bReaction)
+            {
+                const float Startup = Stats.StartupTime;
+                if (Startup > 0.f && Startup <= FastestStartup + PunishStartupMargin)
+                {
+                    Line += FString::Printf(TEXT("  PunishHit %d%%"), Percent(Stats.PunishHit.Get(BehaviorStats::PunishHitPrior)));
+                    bShow = true;
+                }
+                if (Pattern.bAllowRollCatch)
+                {
+                    Line += FString::Printf(TEXT("  CatchHit %d%% [CATCH]"), Percent(Stats.CatchHit.Get(BehaviorStats::RollCatchHitPrior)));
+                    bShow = true;
+                }
+            }
+
+            if (bShow)
+            {
+                Lines.Add(Line);
+            }
+        }
+    }
+
+    DrawDebugString(GetWorld(), FVector(0.f, 0.f, Debug.Height), FString::Join(Lines, TEXT("\n")),
+        this, FColor::White, Lifetime, true, Debug.FontScale);
+
+    // Ground circles: learned reach of each pattern (yellow) and the combat distance band (white)
+    if (Debug.bRange)
+    {
+        const FVector Feet = GetActorLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() - 5.f);
+        auto DrawRing = [this, &Feet, Lifetime](float Radius, const FColor& Color)
+            {
+                DrawDebugCircle(GetWorld(), Feet, Radius, 48, Color, false, Lifetime, 0, 2.f,
+                    FVector(1.f, 0.f, 0.f), FVector(0.f, 1.f, 0.f), false);
+            };
+
+        for (int32 i = 0; i < Patterns.Num(); i++)
+        {
+            DrawRing(GetEffectiveRange(i), FColor::Yellow);
+        }
+        DrawRing(MinCombatRange, FColor::White);
+        DrawRing(GetMaxCombatRange(), FColor::White);
+    }
+}
+
+// Flash a short message above this enemy when the matching debug part is enabled
+void AEnemy::DebugEvent(bool bEnabled, const FString& Text, const FColor& Color, float HeightOffset, float Duration)
+{
+    if (!bEnabled) return;
+
+    DrawDebugString(GetWorld(), FVector(0.f, 0.f, BehaviorDebug.Height + HeightOffset), Text,
+        this, Color, Duration, true, BehaviorDebug.FontScale * 1.5f);
+}
+
+// Show where a lunge was going to aim and what the dodge prediction said
+void AEnemy::DrawDodgeAimDebug(const FAttackSample& Sample)
+{
+    if (!BehaviorDebug.bDodge) return;
+
+    constexpr float Lifetime = 3.f;
+    const FVector Aim = Sample.Origin + Sample.AimShift;
+
+    // Blue: target when the lunge committed, green: corrected aim
+    DrawDebugSphere(GetWorld(), Sample.Origin, 30.f, 12, FColor::Blue, false, Lifetime);
+    DrawDebugSphere(GetWorld(), Aim, 30.f, 12, FColor::Green, false, Lifetime);
+    DrawDebugDirectionalArrow(GetWorld(), Sample.Origin, Aim, 40.f, FColor::Green, false, Lifetime, 0, 3.f);
+
+    const FAimPrediction& Prediction = Sample.Prediction;
+    const FString Result = Prediction.Bucket == INDEX_NONE
+        ? FString(TEXT("NO PREDICTION"))
+        : FString::Printf(TEXT("prev %s -> %s %d%%  %s"),
+            DodgeBucketName(Sample.PrevBucket), DodgeBucketName(Prediction.Bucket), Percent(Prediction.Confidence),
+            Prediction.bApplied ? TEXT("APPLIED") : TEXT("SKIPPED"));
+
+    DebugEvent(true, FString::Printf(TEXT("P%d swing %d: %s"), Sample.PatternIdx, Sample.AttackIdx + 1, *Result),
+        FColor::Green, 100.f, Lifetime);
 }
 
 // Timer callback: the held-back roll catch starts now
@@ -917,7 +1182,8 @@ void AEnemy::EnableAttackMovement()
 
         // Predict from how the target dodged the previous lunge of this combo
         Sample.Begin(PatternIdx, AttackIdx, Forward, TargetLocation, PlayerActionRecord.PrevDodgeBucket);
-        Sample.AimShift = ApplyAimOffset(TargetLocation, Forward, Attack, Sample.PrevBucket) - TargetLocation;
+        Sample.AimShift = ApplyAimOffset(TargetLocation, Forward, Attack, Sample.PrevBucket, &Sample.Prediction) - TargetLocation;
+        DrawDodgeAimDebug(Sample);
     }
 
     // Re-aims track the target but add only the part of the predicted dodge it has not covered yet,
@@ -944,18 +1210,31 @@ void AEnemy::EnableAttackMovement()
     AIC->MoveToLocation(AimLocation, CloseToTarget, true, true, true);
 }
 
-// Shift BaseLocation by the predicted dodge offset of this swing (only rolls the dice, changes no state)
-FVector AEnemy::ApplyAimOffset(const FVector& BaseLocation, const FVector& Forward, const FAttackProperties& Attack, int32 PrevBucket) const
+// Shift BaseLocation by the predicted dodge offset of this swing (only rolls the dice, changes no state).
+// OutPrediction, when given, receives what the prediction said and whether it was applied (for the debug display).
+FVector AEnemy::ApplyAimOffset(const FVector& BaseLocation, const FVector& Forward, const FAttackProperties& Attack,
+    int32 PrevBucket, FAimPrediction* OutPrediction) const
 {
     FVector2D Offset;
     float Confidence = 0.f;
     if (!Attack.DodgeStats.Query(PlayerActionRecord.DodgeFallback, PrevBucket, Offset, Confidence)) return BaseLocation;
+
+    if (OutPrediction)
+    {
+        OutPrediction->Bucket = static_cast<int32>(FDodgeStats::Classify(Offset));
+        OutPrediction->Confidence = Confidence;
+    }
 
     // Aiming short of the target makes the lunge stop out of reach, while aiming past it still connects
     Offset.X = FMath::Max(Offset.X, 0.f);
 
     // Apply the correction only some of the time so the enemy never becomes fully deterministic
     if (FMath::FRand() > Confidence * MaxAimShiftChance) return BaseLocation;
+
+    if (OutPrediction)
+    {
+        OutPrediction->bApplied = true;
+    }
 
     const FVector Right = FVector::CrossProduct(FVector::UpVector, Forward);
     const FVector Shift = Forward * Offset.X + Right * Offset.Y;
@@ -978,6 +1257,7 @@ void AEnemy::SetParriable(bool bIsParriable)
 void AEnemy::EnableWeaponHitbox()
 {
     if (bIsRewinding) return;
+    bSwingInterrupted = false;
 
     // A wait that ended with this attack was kept open through the windup; it ends here
     CloseWait();
@@ -999,6 +1279,7 @@ void AEnemy::EnableWeaponHitbox()
 // An invincible target is noted but not marked as hit, so the same swing can still land once invincibility ends.
 void AEnemy::TryWeaponHit(AActor* OtherActor)
 {
+    if (bSwingInterrupted) return;
     if (!Patterns.IsValidIndex(PatternIdx) || !Patterns[PatternIdx].Attacks.IsValidIndex(AttackIdx)) return;
     const FAttackProperties& Attack = Patterns[PatternIdx].Attacks[AttackIdx];
 
@@ -1070,6 +1351,12 @@ void AEnemy::DisableWeaponHitbox()
         // Log the result of the lunge attack, including pattern index, attack index, and whether any actors were hit
         // UE_LOG(LogTemp, Warning, TEXT("  P=%d A=%d Hit=%d"), PatternIdx, AttackIdx, AlreadyHitActors.Num() > 0);
 
+        // Red: where the target actually was when the swing ended
+        if (BehaviorDebug.bDodge)
+        {
+            DrawDebugSphere(GetWorld(), Sample.ResolvedLocation, 30.f, 12, FColor::Red, false, 3.f);
+        }
+
         // The next lunge of this combo is predicted from this dodge
         PlayerActionRecord.PrevDodgeBucket = RecordSample(Sample);
     }
@@ -1104,7 +1391,7 @@ void AEnemy::DisableWeaponHitbox()
         // The first swing decides whether a punish attempt worked
         CloseReactionAttempt(Outcome == EAttackOutcome::Hit);
 
-        // UE_LOG(LogTemp, Warning, TEXT("SwingOutcome P=%d A=%d %s Reached=%d Rolled=%d Carried=%d"),
+        // UE_LOG(LogTemp, Warning, TEXT("SwingOutcome P=%d A=%d %s Reached=%d Rolled=%d Carried=%d"), 
         //     PatternIdx, AttackIdx, LexToString(Outcome), Swing.bReached, Swing.bRolled, Swing.bRollHandled);
     }
 
@@ -1143,8 +1430,9 @@ int32 AEnemy::RecordSample(const FAttackSample& Sample)
 void AEnemy::InterruptCurrentAttack()
 {
     // Cancel any pending parry rewind
-    GetWorldTimerManager().ClearTimer(ParryRewindTimerHandle);
     bIsRewinding = false;
+    bSwingInterrupted = true;
+    GetWorldTimerManager().ClearTimer(ParryRewindTimerHandle);
 
     // Discard the pending dodge sample so an interrupted attack is never learned as a dodge
     PlayerActionRecord.PendingDodgeSample.bActive = false;
@@ -1183,6 +1471,8 @@ void AEnemy::InterruptCurrentAttack()
 
     bCanBeParried = false;
     DisableWeaponHitbox();
+    DisableAttackMovement();
+    DisableAttackRotation();
 }
 
 // Reset the enemy's state to InCombat after completing an attack pattern
@@ -1243,7 +1533,11 @@ void AEnemy::CloseWait(bool bCutShort)
             Behavior.Aggression.Record(bAttackedFirst, Weight * AggressionWeight);
             Behavior.RollHabit.Record(bRolled, Weight * RollWeight);
         });
+    
     // UE_LOG(LogTemp, Warning, TEXT("WaitResult AttackedFirst=%d Rolled=%d Watched=%.2f"), bAttackedFirst, bRolled, Watched);
+    const FString WaitResult = bAttackedFirst ? (bRolled ? TEXT("ATTACKED + ROLLED") : TEXT("ATTACKED"))
+        : (bRolled ? TEXT("ROLLED") : TEXT("CALM"));
+    DebugEvent(BehaviorDebug.bDecision || BehaviorDebug.bReaction, FString(TEXT("WAIT: ")) + WaitResult, FColor::Yellow);
 
     Wait = FWaitObservation();
 }
@@ -1269,7 +1563,9 @@ void AEnemy::CloseReactionAttempt(bool bHit)
                 (bCatch ? Stats.CatchHit : Stats.PunishHit).Record(bHit, Weight);
             }
         });
+
     // UE_LOG(LogTemp, Warning, TEXT("ReactionResult %s P=%d Hit=%d"), LexToString(Type), Idx, bHit);
+    DebugEvent(BehaviorDebug.bReaction, bHit ? TEXT("HIT") : TEXT("MISS"), bHit ? FColor::Green : FColor::Red, 60.f, 1.f);
 }
 
 
@@ -1288,7 +1584,7 @@ void AEnemy::ClosePunishWatch(bool bPunished)
         {
             Enemy.Patterns[Idx].OutcomeStats.Punished.Record(bPunished, Weight);
         });
-    // UE_LOG(LogTemp, Warning, TEXT("PunishedResult P=%d Punished=%d"), Idx, bPunished);
+    UE_LOG(LogTemp, Warning, TEXT("PunishedResult P=%d Punished=%d"), Idx, bPunished);
 }
 
 // Learn from the pattern that just ended how far it can be started from, then clear the record.
@@ -1332,8 +1628,11 @@ void AEnemy::UpdateRangeScale(int32 Idx)
     const float Delta = NewScale - OldScale;
     if (Delta == 0.f) return;
 
-    // UE_LOG(LogTemp, Warning, TEXT("RangeScale P=%d Start=%.0f Reached=%d %.2f -> %.2f"),
-    //    Idx, Run.StartDistance, Run.bReached, OldScale, NewScale);
+    // UE_LOG(LogTemp, Warning, TEXT("RangeScale P=%d Start=%.0f Reached=%d %.2f -> %.2f"), 
+    //     Idx, Run.StartDistance, Run.bReached, OldScale, NewScale);
+
+    DebugEvent(BehaviorDebug.bRange, FString::Printf(TEXT("P%d RANGE %+.2f"), Idx, Delta),
+        Delta > 0.f ? FColor::Green : FColor::Red, 80.f, 1.5f);
 
     // Peers take part of the same change; the bounds are shared because the patterns are the same
     ShareLearning([Idx, Delta, MinScale, MaxScale](AEnemy& Enemy, float Weight)
@@ -1350,11 +1649,25 @@ void AEnemy::ShareLearning(TFunctionRef<void(AEnemy& Enemy, float Weight)> Apply
     Apply(*this, 1.f);
 
     if (LearningShareRatio <= 0.f) return;
+
+    // Debug: a short line to every peer, at most a few times a second
+    const float Now = GetWorld()->GetTimeSeconds();
+    const bool bDrawLines = BehaviorDebug.bShare && Now - LastShareLineTime > 0.25f;
+    if (bDrawLines)
+    {
+        LastShareLineTime = Now;
+    }
+
     for (const TWeakObjectPtr<AEnemy>& Peer : GetPeers())
     {
-        if (Peer.IsValid())
+        if (!Peer.IsValid()) continue;
+
+        Apply(*Peer, LearningShareRatio);
+        Peer->SharedReceived++;
+
+        if (bDrawLines)
         {
-            Apply(*Peer, LearningShareRatio);
+            DrawDebugLine(GetWorld(), GetActorLocation(), Peer->GetActorLocation(), FColor::Cyan, false, 0.3f, 0, 3.f);
         }
     }
 }

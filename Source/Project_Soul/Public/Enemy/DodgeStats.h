@@ -176,6 +176,18 @@ struct FDodgeStats
 	}
 };
 
+// What the aim correction decided for one lunge, kept for the debug display
+struct FAimPrediction
+{
+	// Predicted dodge direction; INDEX_NONE when there was no prediction
+	int32 Bucket = INDEX_NONE;
+
+	float Confidence = 0.f;
+
+	// The correction was actually applied (it is rolled against the confidence)
+	bool bApplied = false;
+};
+
 // Snapshot of an attack whose outcome is learned later
 struct FAttackSample
 {
@@ -185,16 +197,21 @@ struct FAttackSample
 
 	// Attack axis: horizontal direction from the attacker to the target at commit time
 	FVector Forward = FVector::ForwardVector;
+
 	// Target location the aim was based on (before the learned correction)
 	FVector Origin = FVector::ZeroVector;
 
 	// Previous dodge used for the prediction at commit time; the outcome is learned against the same context
 	int32 PrevBucket = INDEX_NONE;
+
 	// Learned correction decided once at commit time (melee re-aims reuse it)
 	FVector AimShift = FVector::ZeroVector;
 
 	// Filled in when the sample is resolved
 	FVector ResolvedLocation = FVector::ZeroVector;
+
+	// Prediction made at commit time (debug display)
+	FAimPrediction Prediction;
 
 	void Begin(int32 NewPatternIdx, int32 NewAttackIdx, const FVector& NewForward, const FVector& NewOrigin, int32 NewPrevBucket)
 	{

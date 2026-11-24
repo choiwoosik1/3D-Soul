@@ -52,6 +52,9 @@ struct FAttackProperties
 	float MovementSpeed = 0.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bCanBeParried = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EGuardResponse GuardResponse = EGuardResponse::Block;
 
 	UPROPERTY(VisibleAnywhere)
@@ -121,4 +124,40 @@ struct FPlayerActionRecord
 
 	// Lunge attack currently being tracked
 	FAttackSample PendingDodgeSample;
+};
+
+// Which parts of the behavior analysis an enemy shows above its head, for demonstrations
+USTRUCT(BlueprintType)
+struct FBehaviorDebugSettings
+{
+	GENERATED_BODY()
+
+	// Tendencies, pattern pick chances and weights
+	UPROPERTY(EditAnywhere)
+	bool bDecision = false;
+
+	// Learned attack and combat ranges, with ground circles
+	UPROPERTY(EditAnywhere)
+	bool bRange = false;
+
+	// Punish and roll catch chances, cooldowns and events
+	UPROPERTY(EditAnywhere)
+	bool bReaction = false;
+
+	// Dodge habit and the aim correction of each lunge
+	UPROPERTY(EditAnywhere)
+	bool bDodge = false;
+
+	// Peers and what has been learned from them
+	UPROPERTY(EditAnywhere)
+	bool bShare = false;
+
+	UPROPERTY(EditAnywhere, meta = (ClampMin = "0.5"))
+	float FontScale = 1.2f;
+
+	// Height of the text above the enemy's origin
+	UPROPERTY(EditAnywhere)
+	float Height = 160.f;
+
+	bool IsAnyEnabled() const { return bDecision || bRange || bReaction || bDodge || bShare; }
 };
