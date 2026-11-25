@@ -36,7 +36,7 @@ protected:
 	bool bBackstabbed = false;
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
-	float BackstabMultiplier = 2.5f;
+	float BackstabMultiplier = 1.5f;
 	
 	UPROPERTY(VisibleAnywhere, Category = "Combat")
 	bool bCanBeParried = false;
@@ -48,7 +48,7 @@ protected:
 	bool bCriticalHit = false;
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
-	float CriticalHitMultiplier = 3.f;
+	float CriticalHitMultiplier = 2.f;
 
 	UPROPERTY(VisibleAnywhere, Category = "Combat")
 	bool bIsInvincible = false;
